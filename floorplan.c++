@@ -40,6 +40,18 @@ private:
         }
     }
 
+    // Check if a floor plan already exists in floor_plans.txt
+    bool floorExists(const string& planName) {
+        ifstream file("floor_plans.txt");
+        string existingPlanName;
+        while (file >> existingPlanName) {
+            if (existingPlanName == planName) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 public:
     FloorPlanManager() {
         loadFloorPlans(); // Load existing floor plans during initialization
@@ -47,6 +59,12 @@ public:
 
     // Upload a new floor plan
     void uploadFloorPlan(const string& planName, const string& adminName, int capacity, bool isAvailable) {
+        // Check if floor plan already exists
+        if (floorExists(planName)) {
+            cout << "Error: Floor plan '" << planName << "' already exists. Please use a different name." << endl;
+            return;
+        }
+
         FloorPlan newPlan;
         newPlan.filename = planName + ".txt";
         newPlan.lastModifiedBy = adminName;
