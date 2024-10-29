@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 #include <ctime>
+#include <set>
 
 using namespace std;
 
@@ -11,7 +12,7 @@ struct FloorPlan {
     string lastModifiedBy;    // Last user who modified the floor plan
     time_t timestamp;         // Timestamp of the last modification
     int capacity;             // Capacity of the floor plan
-    bool availability;        // Availability status of the floor plan
+    string availability;        // Availability status of the floor plan
 };
 
 // Class to handle the floor plan management
@@ -70,14 +71,21 @@ public:
     }
 
     // Function to add or modify a floor plan
-    void updateFloorPlan(const string& adminName, int capacity, bool availability) {
+    void updateFloorPlan(const string& adminName, int capacity,const string& availability) {
         onlinePlan.capacity = capacity;
         onlinePlan.availability = availability;
-        
         if (isOffline) {
             // Store changes offline
             storeOfflineChanges(adminName);
         } else {
+            // Check if this is the first time we are adding this floor plan
+            if (!floorExists(onlinePlan.filename.substr(0, onlinePlan.filename.size() - 4))) { // Check without ".txt"
+                ofstream floorPlansFile("floor_plans.txt", ios::app);
+                if (floorPlansFile.is_open()) {
+                    floorPlansFile << onlinePlan.filename.substr(0, onlinePlan.filename.size() - 4) << endl; // Write the floor name without ".txt"
+                    floorPlansFile.close();
+                }
+            }
             // Directly modify online floor plan
             modifyOnlineFloorPlan(adminName);
         }
@@ -91,7 +99,7 @@ public:
             offlineFile << "Floor: " << onlinePlan.filename << endl;
             offlineFile << "Modified by: " << adminName << endl;
             offlineFile << "Capacity: " << onlinePlan.capacity << endl;
-            offlineFile << "Availability: " << (onlinePlan.availability ? "Available" : "Not Available") << endl;
+            offlineFile << "Availability: " << onlinePlan.availability << endl;
             offlineFile << "Timestamp: " << ctime(&currentTime);
             offlineFile.close();
             cout << "Changes saved offline." << endl;
@@ -109,7 +117,7 @@ public:
 
             file << "Modified by: " << adminName << endl;
             file << "Capacity: " << onlinePlan.capacity << endl;
-            file << "Availability: " << (onlinePlan.availability ? "Available" : "Not Available") << endl;
+            file << "Availability: " << onlinePlan.availability << endl;
             file << "Timestamp: " << ctime(&onlinePlan.timestamp);
             file.close();
             cout << "Floor plan updated online." << endl;
@@ -126,9 +134,18 @@ public:
             return;
         }
 
-        ofstream floorPlansFile("floor_plans.txt", ios::app);
-        string line, currentFloor;
+        // Open floor_plans.txt in read mode to check existing floors
+        ifstream floorPlansFile("floor_plans.txt");
+        set<string> existingFloors; // Set to store existing floor names
+        string existingFloor;
 
+        // Read existing floor names into the set
+        while (getline(floorPlansFile, existingFloor)) {
+            existingFloors.insert(existingFloor);
+        }
+        floorPlansFile.close();
+
+        string line, currentFloor;
         while (getline(offlineFile, line)) {
             if (line.rfind("Floor: ", 0) == 0) {
                 currentFloor = line.substr(7);
@@ -138,27 +155,34 @@ public:
                     currentFloor = currentFloor.substr(0, currentFloor.size() - 4);
                 }
 
-                // Write only the floor name (without .txt) to floor_plans.txt
-                floorPlansFile << currentFloor << endl;
-            }
-
-            // Append line to the specific floor file
-            ofstream floorFile(currentFloor + ".txt", ios::app);
-            if (floorFile.is_open()) {
-                floorFile << line << endl;
-                floorFile.close();
+                // Write only the floor name (without .txt) to floor_plans.txt if it’s not already present
+                if (existingFloors.find(currentFloor) == existingFloors.end()) {
+                    ofstream appendFloorPlansFile("floor_plans.txt", ios::app);
+                    if (appendFloorPlansFile.is_open()) {
+                        appendFloorPlansFile << currentFloor << endl;
+                        appendFloorPlansFile.close();
+                        existingFloors.insert(currentFloor);
+                        cout << "Added floor: " << currentFloor << " to floor_plans.txt" << endl;
+                    } else {
+                        cout << "Error opening floor_plans.txt for appending." << endl;
+                    }
+                }
+                // Append line to the specific floor file
+                ofstream floorFile(currentFloor + ".txt", ios::app);
+                if (floorFile.is_open()) {
+                    floorFile << line << endl;
+                    floorFile.close();
+                }
             }
         }
 
         offlineFile.close();
-        floorPlansFile.close();
 
         // Clear offline changes after synchronization
         ofstream clearOffline("offline_changes.txt", ofstream::out | ofstream::trunc);
         clearOffline.close();
         cout << "Offline changes synchronized and file cleared successfully." << endl;
     }
-
 
     // Function to view floor plan details
     void viewFloorPlan() {
@@ -239,10 +263,10 @@ int main() {
 
             case '4': {
                 int capacity;
-                bool availability;
+                string availability;
                 cout << "Enter capacity: ";
                 cin >> capacity;
-                cout << "Enter availability (1 for available, 0 for not available): ";
+                cout << "Enter availability (Yes/No): ";
                 cin >> availability;
                 manager.updateFloorPlan(adminUsername, capacity, availability);
                 break;
