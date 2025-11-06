@@ -1,27 +1,54 @@
-                                             		INTELLIGENT FLOOR PLAN MANAGEMENT
-							=================================
 
---> This project is about making or arranging new rooms and for booking them also.
---> It has several different files which includes:
-	1:authentication.c++ : This files will ask for users to register or login and store the data in files as plain_users.txt and hashed_users.txt
-	2:adminregistration.c++ : This files will register the admins and stored them in plain_admins.txt and hashed_admins.txt	
-	3:floorplan.c++ : This file will first check that the user who is trying to access is an admin or not because an admin can only make changes for a room.
-			  After registration, admin will ask to upload a new room, or modify an existing room, or view existing rooms details.
-			  Upload includes a new room generation(create a new room by entering the required details).
-			  Modify means changing some of its details like capacity or availability
-	4:offlinemechanism.c++ : This file provides a way to store room details if we are offline.
-				 It stores the details in an offline.txt file and after coming online, it will synchronize them.
-	5:meetingroom.c++ : This file provides room booking mechanism.
-			    If the room is suitable according to the capacity entered by the user, it will suggest all the rooms within that capacity and if available.
-			    User can release the room after his/her work get completed.
-			    User can view room details such as capacity, availability, last time booking and all that.
---> Generated files after all these C++ codes:
-	1: floor_plans.txt : This will store all the rooms which will be created.
-	2: floorname.txt : With regards to each floor there will be txt files of each floor which will have it's information.(like: room1.txt)
-	3: plain_users.txt : This file will have username and there real passwords.
-	4: hashed_users.txt : This file will have username and there hashed passwords for privacy concerns.
-	5: plain_admins.txt : This file will have admin name and there real passwords.
-	6: hashed_admins.txt : This file will have admin name and there hashed passwords for privacy concerns.
-	7: offline.txt : This file will store all the floor which will be created when we select offline condition and once we come online, then all the data of this file will be transferred
-                         to the floor_plans.txt 
+# Intelligent Room Management System
 
+## Description
+
+This project is a command-line application for managing and booking rooms in a building. It is designed with an object-oriented approach to ensure modularity, maintainability, and scalability.
+
+### Features:
+
+*   **User and Admin Authentication:** Secure login and registration system for users and admins.
+*   **Role-Based Access Control:**
+    *   **Super Admin:** A default super admin ("Chetan") has the highest level of access and can add other admins.
+    *   **Admins:** Can manage rooms, including uploading, modifying, and viewing them. They can also register new admins.
+    *   **Users:** Can book and release rooms, and view the status of all rooms.
+*   **Room Management:** Admins can create, modify, and view rooms, including details like capacity and availability.
+*   **Room Booking System:** Users can find and book suitable rooms based on their capacity requirements.
+*   **Offline Mechanism:** The system provides a mechanism to store changes offline and synchronize them when the user is back online.
+
+## Object-Oriented Design
+
+The project is structured using the following classes, each with a specific responsibility:
+
+*   **`Authentication`:** Manages all aspects of user and admin authentication, including registration, login, password hashing, and the super admin functionality.
+*   **`Room`:** Represents a single room as an object, encapsulating its data (name, capacity, availability, bookedBy, etc.) and related operations.
+*   **`RoomManager`:** Manages the entire collection of `Room` objects, providing an interface for loading, saving, uploading, modifying, and viewing rooms.
+*   **`RoomBookingSystem`:** Manages all room booking operations, including booking, releasing, and displaying the status of all rooms.
+*   **`OfflineManager`:** Encapsulates the logic for handling offline data storage and synchronization.
+*   **`UI`:** Provides a set of static methods for displaying the user interface, ensuring a clean separation between the application's logic and its presentation.
+
+## How to Compile and Run
+
+### Prerequisites
+
+*   A C++ compiler that supports C++17 (e.g., g++).
+
+### Compilation
+
+To compile the project, open a terminal in the project's root directory and run the following command:
+
+```powershell
+g++ -std=c++17 -Iinclude -o intelligent_floor_plan.exe src\auth.cpp src\room.cpp src\main.cpp src\meetingroom.cpp src\offlinemechanism.cpp src\ui.cpp
+```
+
+This will compile all the source files and create an executable named `intelligent_floor_plan.exe`.
+
+### Running the Application
+
+Once the project is compiled, you can run the application by executing the following command in the terminal from the project's root directory:
+
+```powershell
+.\intelligent_floor_plan.exe
+```
+
+This will start the Intelligent Room Management System, and you can interact with it through the command-line interface.
