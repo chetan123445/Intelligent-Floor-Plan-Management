@@ -69,6 +69,17 @@ void OfflineManager::queueReleaseRoom(const std::string& username, const std::st
     }
 }
 
+void OfflineManager::queueDeleteRoom(const std::string& roomName) {
+    std::ofstream offlineFile(OFFLINE_CHANGES_FILE, std::ios::app);
+    if (offlineFile.is_open()) {
+        offlineFile << "DELETE_ROOM " << roomName << std::endl;
+        offlineFile.close();
+        UI::displayMessage("Offline action: Delete room '" + roomName + "' queued.");
+    } else {
+        UI::displayMessage("Error: Unable to save offline changes.");
+    }
+}
+
 void OfflineManager::queueBookRoom(const std::string& username, int participants, const std::string& roomName) {
     std::ofstream offlineFile(OFFLINE_CHANGES_FILE, std::ios::app);
     if (offlineFile.is_open()) {
@@ -141,6 +152,10 @@ void OfflineManager::applyRegisterNewAdmin(const std::string& /*adminName*/, con
 
 void OfflineManager::applyBookRoom(const std::string& username, int participants, const std::string& roomName) {
     rbs.bookRoom(username, participants, roomName);
+}
+
+void OfflineManager::applyDeleteRoom(const std::string& roomName) {
+    rm.deleteRoom(roomName);
 }
 
 void OfflineManager::applyReleaseRoom(const std::string& username, const std::string& roomName) {

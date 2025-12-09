@@ -102,6 +102,19 @@ void RoomManager::uploadRoom(const std::string& adminName) {
     UI::displayMessage("Room '" + roomName + "' has been uploaded successfully.");
 }
 
+void RoomManager::deleteRoom(const std::string& roomName) {
+    auto it = std::remove_if(rooms.begin(), rooms.end(), [&](const Room& r) {
+        return r.getName() == roomName;
+    });
+
+    if (it != rooms.end()) {
+        rooms.erase(it, rooms.end());
+        saveRooms();
+        UI::displayMessage("Room '" + roomName + "' has been deleted successfully.");
+    } else {
+        UI::displayMessage("Error: Room '" + roomName + "' does not exist.");
+    }
+}
 void RoomManager::modifyRoom(const std::string& adminName) {
     std::string roomName;
     int capacity;

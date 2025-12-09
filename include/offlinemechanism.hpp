@@ -18,6 +18,7 @@ public:
     void queueRegisterNewAdmin(const std::string& adminName, const std::string& newAdminUsername, const std::string& newAdminPassword);
     void queueReleaseRoom(const std::string& username, const std::string& roomName);
     void queueBookRoom(const std::string& username, int participants, const std::string& roomName);
+    void queueDeleteRoom(const std::string& roomName);
     std::vector<std::string> getQueueForDisplay();
 
 private:
@@ -33,6 +34,7 @@ private:
     void applyModifyRoom(const std::string& adminName, const std::string& roomName, int capacity, bool isAvailable);
     void applyRegisterNewAdmin(const std::string& adminName, const std::string& newAdminUsername, const std::string& newAdminPassword);
     void applyBookRoom(const std::string& username, int participants, const std::string& roomName);
+    void applyDeleteRoom(const std::string& roomName);
     void applyReleaseRoom(const std::string& username, const std::string& roomName);
 };
 

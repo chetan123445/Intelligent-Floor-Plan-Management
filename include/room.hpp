@@ -34,15 +34,16 @@ private:
 class RoomManager {
 public:
     RoomManager();
-    void loadRooms();
-    void uploadRoom(const std::string& adminName);
-    void modifyRoom(const std::string& adminName);
+    void loadRooms(); // Made public for GUI to explicitly load
+    void uploadRoom(const std::string& adminName); // Console-based upload
+    void modifyRoom(const std::string& adminName); // Console-based modify
     void modifyRoom(const std::string& adminName, const std::string& roomName, int capacity, bool isAvailable);
     void viewRoom();
     std::vector<Room>& getRooms();
     void saveRooms();
     Room* findRoom(const std::string& roomName);
     void addRoom(const std::string& adminName, const std::string& roomName, int capacity, bool isAvailable = true);
+    void deleteRoom(const std::string& roomName);
 
 private:
     std::vector<Room> rooms;

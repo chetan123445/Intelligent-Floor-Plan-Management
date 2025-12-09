@@ -4,6 +4,7 @@
 #include "meetingroom.hpp"
 #include "offlinemechanism.hpp"
 #include <random>   // For random number generation
+#include <algorithm> // For std::transform
 #include <chrono>   // For seeding the random number generator
 #include <vector>
 #include <string>
@@ -62,6 +63,15 @@ int main() {
     char roomName[64] = "";
     char roomCapacity[10] = "";
     bool roomNameBoxEditMode = false;
+
+    // Room modification state
+    bool showModifyRoomPopup = false;
+    char modifyRoomName[64] = "";
+    char modifyRoomCapacity[10] = "";
+    bool modifyRoomAvailability = false;
+    bool modifyRoomNameEditMode = false;
+    bool modifyRoomCapacityEditMode = false; // Declare missing variable
+    std::string modifyRoomMessage = "";
     bool roomCapacityBoxEditMode = false;
 
     // Book room state
@@ -73,6 +83,18 @@ int main() {
     // View Offline Queue state
     bool showOfflineQueuePopup = false;
 
+    // Room deletion state
+    bool showDeleteRoomPopup = false;
+    char deleteRoomName[64] = "";
+    bool deleteRoomNameEditMode = false;
+
+    // Room Search and Filter state
+    char searchRoomName[64] = "";
+    bool searchRoomNameEditMode = false;
+    bool filterAvailableRooms = false;
+    bool filterBookedRooms = false;
+    char filterCapacity[10] = "";
+    bool filterCapacityEditMode = false;
     // Random offline simulation state
     std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
     std::uniform_real_distribution<float> onlineDurationDist(20.0f, 40.0f);   // Stay online for 20-40 seconds
@@ -240,6 +262,18 @@ int main() {
                         memset(roomCapacity, 0, 10);
                     }
                     buttonY += 40;
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "Modify Room")) {
+                        showModifyRoomPopup = true;
+                        memset(modifyRoomName, 0, 64);
+                        memset(modifyRoomCapacity, 0, 10);
+                        modifyRoomAvailability = false;
+                        modifyRoomMessage = "";
+                    }
+                    buttonY += 40;
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "Delete Room")) {
+                        showDeleteRoomPopup = true;
+                        memset(deleteRoomName, 0, 64);
+                    }
                     // Add other admin buttons here: Modify Room, Add Admin etc.
                 } else { // User Menu
                     DrawCenteredText("User Menu", buttonY, 20, DARKGRAY);
@@ -274,37 +308,107 @@ int main() {
                     showOfflineQueuePopup = true;
                 }
 
-                // --- Main content area for rooms ---
-                DrawText("Floor Plan", sidebarWidth + 20, 80, 30, GRAY);
+                // --- Main content area for rooms and filters ---
+                int contentAreaX = sidebarWidth + 20;
+                int contentAreaY = 80;
 
-                const std::vector<Room>& rooms = roomManager.getRooms();
+                DrawText("Floor Plan", contentAreaX, contentAreaY, 30, GRAY);
+                contentAreaY += 50; // Move down for filter controls
+
+                // Search Bar
+                GuiLabel(Rectangle{ (float)contentAreaX, (float)contentAreaY, 80, 20 }, "Search Room:");
+                if (GuiTextBox(Rectangle{ (float)contentAreaX + 100, (float)contentAreaY - 5, 250, 30 }, searchRoomName, 64, searchRoomNameEditMode)) {
+                    searchRoomNameEditMode = !searchRoomNameEditMode;
+                }
+                contentAreaY += 40;
+
+                // Filters
+                GuiCheckBox(Rectangle{ (float)contentAreaX, (float)contentAreaY, 20, 20 }, "Available Only", &filterAvailableRooms);
+                contentAreaY += 30;
+                GuiCheckBox(Rectangle{ (float)contentAreaX, (float)contentAreaY, 20, 20 }, "Booked Only", &filterBookedRooms);
+                
+                // Adjust position for capacity filter after new checkbox
+                contentAreaY -= 30; // Move up to align with the first checkbox row
+                GuiLabel(Rectangle{ (float)contentAreaX + 200, (float)contentAreaY, 80, 20 }, "Min Capacity:"); // Align with first checkbox
+                if (GuiTextBox(Rectangle{ (float)contentAreaX + 300, (float)contentAreaY - 5, 100, 30 }, filterCapacity, 10, filterCapacityEditMode)) { // Align with first checkbox
+                    filterCapacityEditMode = !filterCapacityEditMode;
+                }
+                contentAreaY += 40;
+
+                // Filtered Rooms Logic
+                std::vector<Room> displayedRooms;
+                for (const auto& room : roomManager.getRooms()) {
+                    bool matchesSearch = true;
+                    if (strlen(searchRoomName) > 0) {
+                        std::string roomNameLower = room.getName();
+                        std::transform(roomNameLower.begin(), roomNameLower.end(), roomNameLower.begin(), ::tolower);
+                        std::string searchLower = searchRoomName;
+                        std::transform(searchLower.begin(), searchLower.end(), searchLower.begin(), ::tolower);
+                        if (roomNameLower.find(searchLower) == std::string::npos) {
+                            matchesSearch = false;
+                        }
+                    }
+
+                    bool matchesAvailability = true; // Default to true if no availability filter is active
+                    if (filterAvailableRooms && filterBookedRooms) {
+                        // If both are checked, it's a conflicting state, effectively no availability filter applied.
+                        // Or, you could make it show nothing, depending on desired UX.
+                        // For now, if both are checked, we'll show all rooms (i.e., this filter is ignored).
+                        matchesAvailability = true;
+                    } else if (filterAvailableRooms) {
+                        matchesAvailability = room.isAvailable();
+                    } else if (filterBookedRooms) {
+                        matchesAvailability = !room.isAvailable();
+                    } else {
+                        matchesAvailability = false;
+                    }
+
+                    bool matchesCapacity = true;
+                    if (strlen(filterCapacity) > 0) {
+                        try {
+                            int minCapacity = std::stoi(filterCapacity);
+                            if (room.getCapacity() < minCapacity) {
+                                matchesCapacity = false;
+                            }
+                        } catch (const std::exception& e) {
+                            // Handle invalid capacity input, perhaps display an error message
+                        }
+                    }
+
+                    if (matchesSearch && matchesAvailability && matchesCapacity) {
+                        displayedRooms.push_back(room);
+                    }
+                }
+
                 int roomBoxSize = 100;
                 int padding = 20;
-                int roomsPerRow = (screenWidth - sidebarWidth - padding) / (roomBoxSize + padding);
+                int roomsPerRow = (screenWidth - sidebarWidth - padding - contentAreaX) / (roomBoxSize + padding); // Adjust for new UI elements
                 
-                for (size_t i = 0; i < rooms.size(); ++i) {
+                for (size_t i = 0; i < displayedRooms.size(); ++i) {
                     int row = i / roomsPerRow;
                     int col = i % roomsPerRow;
 
-                    int x = sidebarWidth + padding + col * (roomBoxSize + padding);
-                    int y = 140 + row * (roomBoxSize + padding);
+                    int x = contentAreaX + col * (roomBoxSize + padding);
+                    int y = contentAreaY + row * (roomBoxSize + padding); // Start drawing rooms below filters
 
-                    Color roomColor = rooms[i].isAvailable() ? LIME : MAROON;
+                    Color roomColor = displayedRooms[i].isAvailable() ? LIME : MAROON;
                     DrawRectangle(x, y, roomBoxSize, roomBoxSize, roomColor);
                     DrawRectangleLines(x, y, roomBoxSize, roomBoxSize, DARKBROWN);
 
-                    DrawText(rooms[i].getName().c_str(), x + 10, y + 10, 20, WHITE);
-                    std::string capacityStr = "Cap: " + std::to_string(rooms[i].getCapacity());
+                    DrawText(displayedRooms[i].getName().c_str(), x + 10, y + 10, 20, WHITE);
+                    std::string capacityStr = "Cap: " + std::to_string(displayedRooms[i].getCapacity());
                     DrawText(capacityStr.c_str(), x + 10, y + 35, 15, WHITE);
 
-                    if (!rooms[i].isAvailable()) {
-                        std::string bookedByStr = "By: " + rooms[i].getBookedBy();
+                    if (!displayedRooms[i].isAvailable()) {
+                        std::string bookedByStr = "By: " + displayedRooms[i].getBookedBy();
                         DrawText(bookedByStr.c_str(), x + 10, y + 60, 15, YELLOW);
                     } else {
                         DrawText("Available", x + 10, y + 60, 15, WHITE);
                     }
                 }
-                 if (rooms.empty()) {
+                 if (displayedRooms.empty() && !roomManager.getRooms().empty()) {
+                    DrawText("No rooms match your search/filters.", contentAreaX, contentAreaY + 50, 20, GRAY);
+                } else if (roomManager.getRooms().empty()) {
                     DrawText("No rooms created yet. Admin needs to add rooms.", sidebarWidth + 20, 150, 20, GRAY);
                 }
 
@@ -390,6 +494,102 @@ int main() {
             }
 
             DrawText(bookingMessage.c_str(), popupRect.x + 20, popupRect.y + 190, 20, MAROON);
+        }
+
+        if (showModifyRoomPopup) {
+            int popupWidth = 450;
+            int popupHeight = 350;
+            Rectangle popupRect = { (float)screenWidth/2 - popupWidth/2, (float)screenHeight/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
+            
+            showModifyRoomPopup = !GuiWindowBox(popupRect, "Modify Room Details");
+
+            GuiLabel(Rectangle{ popupRect.x + 20, popupRect.y + 50, 100, 20 }, "Room Name:");
+            if (GuiTextBox(Rectangle{ popupRect.x + 130, popupRect.y + 40, 250, 40 }, modifyRoomName, 64, modifyRoomNameEditMode)) {
+                modifyRoomNameEditMode = !modifyRoomNameEditMode;
+            }
+
+            if (GuiButton(Rectangle{ popupRect.x + 130, popupRect.y + 90, 100, 30 }, "Load Details")) {
+                Room* room = roomManager.findRoom(modifyRoomName);
+                if (room) {
+                    snprintf(modifyRoomCapacity, 10, "%d", room->getCapacity());
+                    modifyRoomAvailability = room->isAvailable();
+                    modifyRoomMessage = "Details loaded.";
+                } else {
+                    modifyRoomMessage = "Room not found.";
+                    memset(modifyRoomCapacity, 0, 10);
+                    modifyRoomAvailability = false;
+                }
+            }
+
+            GuiLabel(Rectangle{ popupRect.x + 20, popupRect.y + 140, 100, 20 }, "New Capacity:");
+            if (GuiTextBox(Rectangle{ popupRect.x + 130, popupRect.y + 130, 250, 40 }, modifyRoomCapacity, 10, modifyRoomCapacityEditMode)) {
+                modifyRoomCapacityEditMode = !modifyRoomCapacityEditMode;
+            }
+
+            GuiSetStyle(DEFAULT, TEXT_SIZE, 20); // Temporarily increase checkbox text size
+            GuiCheckBox(Rectangle{ popupRect.x + 20, popupRect.y + 190, 30, 30 }, "Available", &modifyRoomAvailability);
+            GuiSetStyle(DEFAULT, TEXT_SIZE, 10); // Reset to default
+
+            if (GuiButton(Rectangle{ popupRect.x + popupWidth/2 - 70, popupRect.y + 240, 140, 40 }, "Save Changes")) {
+                try {
+                    int capacity = std::stoi(modifyRoomCapacity);
+                    if (offlineManager.isOffline()) {
+                        offlineManager.queueModifyRoom(loggedInUser, modifyRoomName, capacity, modifyRoomAvailability);
+                        modifyRoomMessage = "Modification queued.";
+                    } else {
+                        roomManager.modifyRoom(loggedInUser, modifyRoomName, capacity, modifyRoomAvailability);
+                        roomManager.saveRooms();
+                        modifyRoomMessage = "Room modified successfully.";
+                    }
+                    showModifyRoomPopup = false;
+                } catch (const std::exception& e) {
+                    modifyRoomMessage = "Invalid capacity.";
+                    std::cerr << "Invalid capacity input: " << e.what() << std::endl;
+                }
+            }
+            DrawText(modifyRoomMessage.c_str(), popupRect.x + 20, popupRect.y + 290, 20, MAROON);
+        }
+
+        if (showDeleteRoomPopup) {
+            int popupWidth = 400;
+            int popupHeight = 250;
+            Rectangle popupRect = { (float)screenWidth/2 - popupWidth/2, (float)screenHeight/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
+            
+            showDeleteRoomPopup = !GuiWindowBox(popupRect, "Delete Room");
+
+            GuiLabel(Rectangle{ popupRect.x + 20, popupRect.y + 50, 100, 20 }, "Room Name:");
+            if (GuiTextBox(Rectangle{ popupRect.x + 130, popupRect.y + 40, 250, 40 }, deleteRoomName, 64, deleteRoomNameEditMode)) {
+                deleteRoomNameEditMode = !deleteRoomNameEditMode;
+            }
+
+            if (GuiButton(Rectangle{ popupRect.x + popupWidth/2 - 50, popupRect.y + 150, 100, 40 }, "Delete")) {
+                Room* room = roomManager.findRoom(deleteRoomName);
+                if (room) {
+                    // Check if room is booked before deleting
+                    if (!room->isAvailable()) {
+                        // Optionally, you could add a confirmation step here
+                        // For now, we'll just prevent deletion if booked
+                        DrawText("Cannot delete booked room!", popupRect.x + 20, popupRect.y + 200, 20, RED);
+                    } else {
+                        if (offlineManager.isOffline()) {
+                            offlineManager.queueDeleteRoom(deleteRoomName);
+                            DrawText("Deletion queued.", popupRect.x + 20, popupRect.y + 200, 20, LIME);
+                        } else {
+                            roomManager.deleteRoom(deleteRoomName);
+                            DrawText("Room deleted successfully.", popupRect.x + 20, popupRect.y + 200, 20, LIME);
+                        }
+                        showDeleteRoomPopup = false;
+                    }
+                } else {
+                    DrawText("Room not found!", popupRect.x + 20, popupRect.y + 200, 20, RED);
+                }
+            }
+            // If the popup is still open after trying to delete a booked room, the message will persist.
+            // A more robust solution would use a dedicated message variable for this popup.
+            if (showDeleteRoomPopup) {
+                // This is a placeholder for a message if deletion fails due to booking
+                // The actual message is drawn inside the button logic.
+            }
         }
 
         if (showOfflineQueuePopup) {
