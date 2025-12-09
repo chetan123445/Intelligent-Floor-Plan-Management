@@ -168,6 +168,19 @@ void handleUserMenu(const std::string& username, RoomBookingSystem& rbs, Offline
                     rbs.bookRoom(username);
                 }
                 break;
+            case 2: {
+                std::string roomNameToRelease;
+                std::cout << "Enter the name of the room to release: ";
+                std::cin >> roomNameToRelease;
+                if (om.isOffline()) {
+                    om.queueReleaseRoom(username, roomNameToRelease);
+                } else {
+                    // The releaseRoom function will now print the correct message.
+                    // We pass `false` for `isGui`.
+                    rbs.releaseRoom(username, roomNameToRelease, false);
+                }
+            }
+                break;
             case 3:
                 rbs.showRoomStatuses(username);
                 break;

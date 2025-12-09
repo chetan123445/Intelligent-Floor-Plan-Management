@@ -7,7 +7,7 @@
 class UI {
 public:
     static void displayMainMenu();
-    static void displayAdminMenu();
+    static void displayAdminMenu(); // Existing
     static void displayUserMenu();
     static void displayInvalidChoice();
     static void clearScreen();

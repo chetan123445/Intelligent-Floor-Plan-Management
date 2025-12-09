@@ -47,10 +47,10 @@ void UI::displayUserMenu() {
     std::cout << "=========================================" << std::endl;
     std::cout << "              User Menu" << std::endl;
     std::cout << "=========================================" << std::endl;
-    std::cout << "1. Book a Room" << std::endl;
-    std::cout << "2. Release a Room" << std::endl;
-    std::cout << "3. Show Rooms Status" << std::endl;
-    std::cout << "4. Logout" << std::endl;
+    std::cout << "1. Book a Room" << std::endl; // Existing
+    std::cout << "2. Release a Room" << std::endl; // New
+    std::cout << "3. Show Rooms Status" << std::endl; // Existing
+    std::cout << "4. Logout" << std::endl; // Existing
     std::cout << "=========================================" << std::endl;
     std::cout << "Enter your choice: ";
 }

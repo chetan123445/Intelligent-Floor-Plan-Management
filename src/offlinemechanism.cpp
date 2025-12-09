@@ -102,6 +102,17 @@ void OfflineManager::queueBookRoom(const std::string& username, int participants
     }
 }
 
+void OfflineManager::queueReleaseRoom(const std::string& username, const std::string& roomName) {
+    std::ofstream offlineFile(OFFLINE_CHANGES_FILE, std::ios::app);
+    if (offlineFile.is_open()) {
+        offlineFile << "RELEASE_ROOM " << username << " " << roomName << std::endl;
+        offlineFile.close();
+        UI::displayMessage("Offline action: Release room '" + roomName + "' queued.");
+    } else {
+        UI::displayMessage("Error: Unable to save offline changes.");
+    }
+}
+
 void OfflineManager::synchronizeChanges() {
     std::ifstream offlineFile(OFFLINE_CHANGES_FILE);
     if (!offlineFile.is_open()) {
@@ -143,7 +154,11 @@ void OfflineManager::synchronizeChanges() {
             std::string targetUsername, newPassword, newRoleStr;
             ss >> targetUsername >> newPassword >> newRoleStr;
             Authentication::Role newRole = (newRoleStr == "ADMIN") ? Authentication::Role::ADMIN : Authentication::Role::USER;
-            applyEditUser(targetUsername, newPassword, newRole);
+            applyEditUser(targetUsername, newPassword, newRole); // This line was missing the call to applyEditUser
+        } else if (action == "RELEASE_ROOM") {
+            std::string username, roomName;
+            ss >> username >> roomName;
+            applyReleaseRoom(username, roomName);
         }
     }
 
@@ -180,6 +195,10 @@ void OfflineManager::applyDeleteUser(const std::string& targetUsername) {
 
 void OfflineManager::applyEditUser(const std::string& targetUsername, const std::string& newPassword, Authentication::Role newRole) {
     auth.editUser(targetUsername, newPassword, newRole);
+}
+
+void OfflineManager::applyReleaseRoom(const std::string& username, const std::string& roomName) {
+    rbs.releaseRoom(username, roomName, false);
 }
 
 std::vector<std::string> OfflineManager::getQueueForDisplay() {

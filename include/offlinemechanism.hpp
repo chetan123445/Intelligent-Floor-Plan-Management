@@ -20,6 +20,7 @@ public:
     void queueDeleteUser(const std::string& targetUsername);
     void queueEditUser(const std::string& targetUsername, const std::string& newPassword, Authentication::Role newRole);
     void queueDeleteRoom(const std::string& roomName);
+    void queueReleaseRoom(const std::string& username, const std::string& roomName); // New method
     std::vector<std::string> getQueueForDisplay();
 
 private:
@@ -40,6 +41,7 @@ private:
     void applyDeleteUser(const std::string& targetUsername);
     void applyEditUser(const std::string& targetUsername, const std::string& newPassword, Authentication::Role newRole);
     void applyDeleteRoom(const std::string& roomName);
+    void applyReleaseRoom(const std::string& username, const std::string& roomName); // New method
 };
 
 #endif // OFFLINEMECHANISM_HPP

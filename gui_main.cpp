@@ -103,6 +103,12 @@ int main() {
     char bookRoomName[64] = ""; // For specific room booking
     std::string bookingMessage = "";
 
+    // Release room state
+    bool showReleaseRoomPopup = false;
+    char releaseRoomName[64] = "";
+    bool releaseRoomNameEditMode = false;
+    std::string releaseRoomMessage = "";
+    bool showReleaseStatusPopup = false;
     // View Offline Queue state
     bool showOfflineQueuePopup = false;
 
@@ -253,6 +259,7 @@ int main() {
                     showAddRoomPopup = false;
                     showBookRoomPopup = false;
                     showOfflineQueuePopup = false;
+                    showReleaseStatusPopup = false;
                     continue; // Skip rest of the frame
                 }
 
@@ -336,6 +343,12 @@ int main() {
                         memset(bookCapacity, 0, 10); // Clear capacity input
                         memset(bookRoomName, 0, 64); // Clear room name input
                     }
+                    buttonY += 40;
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "Release a Room")) {
+                        showReleaseRoomPopup = true;
+                        releaseRoomMessage = "";
+                        memset(releaseRoomName, 0, 64);
+                    }
                 }
 
                 buttonY += 60; // Gap
@@ -413,20 +426,21 @@ int main() {
                     }
                 }
 
-                int roomBoxSize = 100;
+                int roomBoxWidth = 180; // Increased width for more text space
+                int roomBoxHeight = 100;
                 int padding = 20;
-                int roomsPerRow = (screenWidth - sidebarWidth - padding - contentAreaX) / (roomBoxSize + padding); // Adjust for new UI elements
+                int roomsPerRow = (screenWidth - sidebarWidth - padding - contentAreaX) / (roomBoxWidth + padding); // Adjust for new UI elements
                 
                 for (size_t i = 0; i < displayedRooms.size(); ++i) {
                     int row = i / roomsPerRow;
                     int col = i % roomsPerRow;
 
-                    int x = contentAreaX + col * (roomBoxSize + padding);
-                    int y = contentAreaY + row * (roomBoxSize + padding); // Start drawing rooms below filters
+                    int x = contentAreaX + col * (roomBoxWidth + padding);
+                    int y = contentAreaY + row * (roomBoxHeight + padding); // Start drawing rooms below filters
 
-                    Color roomColor = displayedRooms[i].isAvailable() ? LIME : MAROON;
-                    DrawRectangle(x, y, roomBoxSize, roomBoxSize, roomColor);
-                    DrawRectangleLines(x, y, roomBoxSize, roomBoxSize, DARKBROWN);
+                    Color roomColor = displayedRooms[i].isAvailable() ? Color{18, 160, 14, 255} : Color{190, 30, 45, 255}; // Using slightly darker LIME and MAROON
+                    DrawRectangle(x, y, roomBoxWidth, roomBoxHeight, roomColor);
+                    DrawRectangleLines(x, y, roomBoxWidth, roomBoxHeight, DARKBROWN);
 
                     DrawText(displayedRooms[i].getName().c_str(), x + 10, y + 10, 20, WHITE);
                     std::string capacityStr = "Cap: " + std::to_string(displayedRooms[i].getCapacity());
@@ -527,6 +541,53 @@ int main() {
             }
 
             DrawText(bookingMessage.c_str(), popupRect.x + 20, popupRect.y + 190, 20, MAROON);
+        }
+
+        if (showReleaseRoomPopup) {
+            int popupWidth = 400;
+            int popupHeight = 220;
+            Rectangle popupRect = { (float)screenWidth/2 - popupWidth/2, (float)screenHeight/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
+            
+            showReleaseRoomPopup = !GuiWindowBox(popupRect, "Release a Room");
+
+            GuiLabel(Rectangle{ popupRect.x + 20, popupRect.y + 50, 100, 20 }, "Room Name:");
+            if (GuiTextBox(Rectangle{ popupRect.x + 130, popupRect.y + 40, 250, 40 }, releaseRoomName, 64, releaseRoomNameEditMode)) {
+                releaseRoomNameEditMode = !releaseRoomNameEditMode;
+            }
+
+            if (GuiButton(Rectangle{ popupRect.x + popupWidth/2 - 50, popupRect.y + 140, 100, 40 }, "Release")) {
+                if (offlineManager.isOffline()) {
+                    offlineManager.queueReleaseRoom(loggedInUser, releaseRoomName);
+                    releaseRoomMessage = "Room release has been queued due to being offline.";
+                } else {
+                    ReleaseRoomStatus status = bookingSystem.releaseRoom(loggedInUser, releaseRoomName, true);
+                    switch (status) {
+                        case ReleaseRoomStatus::SUCCESS:
+                            releaseRoomMessage = "Room '" + std::string(releaseRoomName) + "' was released successfully.";
+                            break;
+                        case ReleaseRoomStatus::NOT_FOUND:
+                            releaseRoomMessage = "Room '" + std::string(releaseRoomName) + "' not found.";
+                            break;
+                        case ReleaseRoomStatus::NOT_BOOKED:
+                            releaseRoomMessage = "Room '" + std::string(releaseRoomName) + "' is already available.";
+                            break;
+                        case ReleaseRoomStatus::NOT_OWNER:
+                            releaseRoomMessage = "You can only release rooms booked by you.";
+                            break;
+                    }
+                }
+                showReleaseRoomPopup = false; // Close the action popup
+                showReleaseStatusPopup = true; // Show the status popup
+            }
+        }
+        if (showReleaseStatusPopup) {
+            int popupWidth = 450;
+            int popupHeight = 150;
+            Rectangle popupRect = { (float)screenWidth/2 - popupWidth/2, (float)screenHeight/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
+            if (GuiMessageBox(popupRect, "Release Status", releaseRoomMessage.c_str(), "OK") == 1) {
+                showReleaseStatusPopup = false;
+                releaseRoomMessage = "";
+            }
         }
 
         if (showModifyRoomPopup) {

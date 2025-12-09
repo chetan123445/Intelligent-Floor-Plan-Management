@@ -227,3 +227,32 @@ void RoomBookingSystem::showRoomStatuses(const std::string& /*username*/) {
     }
 
 }
+
+ReleaseRoomStatus RoomBookingSystem::releaseRoom(const std::string& username, const std::string& roomName, bool isGui) {
+    Room* room = rm.findRoom(roomName);
+
+    if (room) {
+        if (!room->isAvailable() && room->getBookedBy() == username) {
+            room->setAvailable(true);
+            room->setBookedBy(""); // Clear bookedBy
+            rm.saveRooms();
+            if (!isGui) {
+                UI::displayMessage("Room released");
+            }
+            return ReleaseRoomStatus::SUCCESS;
+        } else if (room->isAvailable()) {
+            if (!isGui) {
+                UI::displayMessage("This room is not booked yet.");
+            }
+            return ReleaseRoomStatus::NOT_BOOKED;
+        } else {
+            if (!isGui) {
+                UI::displayMessage("This room is not booked by you.");
+            }
+            return ReleaseRoomStatus::NOT_OWNER;
+        }
+    } else {
+        if (!isGui) UI::displayMessage("No room found of this name.");
+        return ReleaseRoomStatus::NOT_FOUND;
+    }
+}
