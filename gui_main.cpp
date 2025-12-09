@@ -31,6 +31,7 @@ int main() {
     const int screenWidth = 1280;
     const int screenHeight = 720;
 
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE); // Allow window to be resizable
     InitWindow(screenWidth, screenHeight, "Intelligent Floor Plan Management");
     SetTargetFPS(60);
 
@@ -57,6 +58,8 @@ int main() {
     bool showAddRoomPopup = false;
     char roomName[64] = "";
     char roomCapacity[10] = "";
+    bool roomNameBoxEditMode = false;
+    bool roomCapacityBoxEditMode = false;
 
     // Book room state
     bool showBookRoomPopup = false;
@@ -83,39 +86,57 @@ int main() {
         switch (currentState) {
             case AppState::LOGIN:
             {
-                DrawCenteredText("LOGIN / REGISTER", 40, 40, DARKGRAY);
+                // Define larger, more modern dimensions for UI elements
+                const float boxWidth = 400;
+                const float boxHeight = 50;
+                const float buttonWidth = 195;
+                const float buttonHeight = 50;
+                const float spacing = 15;
 
+                // Calculate centered positions dynamically
+                float currentScreenWidth = (float)GetScreenWidth();
+                float currentScreenHeight = (float)GetScreenHeight();
+                float startX = (currentScreenWidth - boxWidth) / 2;
+                float startY = currentScreenHeight / 2 - (boxHeight * 2 + buttonHeight) / 2 - 40;
+
+                DrawCenteredText("Intelligent Floor Plan Management", startY - 80, 50, DARKGRAY);
+
+                GuiLabel(Rectangle{ startX, startY - 25, 100, 20 }, "Username");
                 // Username Input
-                if (GuiTextBox(Rectangle{ (float)screenWidth / 2 - 150, 140, 300, 40 }, username, 64, usernameBoxEditMode)) {
+                if (GuiTextBox(Rectangle{ startX, startY, boxWidth, boxHeight }, username, 64, usernameBoxEditMode)) {
                     usernameBoxEditMode = !usernameBoxEditMode;
                 }
 
+                GuiLabel(Rectangle{ startX, startY + boxHeight + spacing - 25, 100, 20 }, "Password");
                 // Password Input
-                if (GuiTextBox(Rectangle{ (float)screenWidth / 2 - 150, 190, 300, 40 }, password, 64, passwordBoxEditMode)) {
+                // Use a temporary buffer for secret view
+                char passwordSecret[64];
+                memset(passwordSecret, '*', strlen(password));
+                passwordSecret[strlen(password)] = '\0';
+                if (GuiTextBox(Rectangle{ startX, startY + boxHeight + spacing, boxWidth, boxHeight }, passwordBoxEditMode ? password : passwordSecret, 64, passwordBoxEditMode)) {
                     passwordBoxEditMode = !passwordBoxEditMode;
                 }
 
                 // Is Admin Checkbox
-                GuiCheckBox(Rectangle{ (float)screenWidth / 2 - 150, 240, 20, 20 }, "Login as Admin", &isAdminLogin);
+                GuiSetStyle(DEFAULT, TEXT_SIZE, 20); // Temporarily increase checkbox text size
+                GuiCheckBox(Rectangle{ startX, startY + 2 * (boxHeight + spacing), 30, 30 }, "Login as Admin", &isAdminLogin);
+                GuiSetStyle(DEFAULT, TEXT_SIZE, 10); // Reset to default
 
                 // Login Button
-                if (GuiButton(Rectangle{ (float)screenWidth / 2 - 150, 280, 145, 40 }, "Login")) {
+                if (GuiButton(Rectangle{ startX, startY + 2 * (boxHeight + spacing) + 50, buttonWidth, buttonHeight }, "Login")) {
                     if (auth.login(username, password, isAdminLogin)) {
                         loginMessage = "Login successful!";
                         loggedInUser = username;
                         roomManager.loadRooms(); // Ensure rooms are loaded after login
-                        if (isAdminLogin) {
-                            currentState = AppState::ADMIN_DASHBOARD;
-                        } else {
-                            currentState = AppState::USER_DASHBOARD;
-                        }
+                        currentState = isAdminLogin ? AppState::ADMIN_DASHBOARD : AppState::USER_DASHBOARD;
                     } else {
                         loginMessage = "Invalid credentials. Please try again.";
                     }
                 }
 
                 // Register Button
-                if (GuiButton(Rectangle{ (float)screenWidth / 2 + 5, 280, 145, 40 }, "Register")) {
+                GuiSetStyle(BUTTON, BASE_COLOR_NORMAL, ColorToInt(LIGHTGRAY)); // Give register a different color
+                if (GuiButton(Rectangle{ startX + buttonWidth + spacing, startY + 2 * (boxHeight + spacing) + 50, buttonWidth, buttonHeight }, "Register")) {
                     if (auth.registerUser(username, password)) {
                         loginMessage = "Registration successful! Please login.";
                     } else {
@@ -123,8 +144,9 @@ int main() {
                     }
                 }
 
+                GuiLoadStyleDefault(); // Reset style to avoid affecting other buttons
                 // Display login message
-                DrawCenteredText(loginMessage.c_str(), 340, 20, loginMessage.find("successful") != std::string::npos ? GREEN : MAROON);
+                DrawCenteredText(loginMessage.c_str(), startY + 2 * (boxHeight + spacing) + 120, 20, loginMessage.find("successful") != std::string::npos ? LIME : MAROON);
             }
             break;
 
@@ -148,6 +170,11 @@ int main() {
                     showBookRoomPopup = false;
                     showOfflineQueuePopup = false;
                     continue; // Skip rest of the frame
+                }
+
+                // Toggle Fullscreen Button
+                if (GuiButton(Rectangle{ (float)screenWidth - 250, 20, 120, 30 }, "Toggle Fullscreen")) {
+                    ToggleFullscreen();
                 }
 
                 // --- Sidebar for actions ---
@@ -234,15 +261,19 @@ int main() {
             showAddRoomPopup = !GuiWindowBox(popupRect, "Add New Room");
 
             GuiLabel(Rectangle{ popupRect.x + 20, popupRect.y + 50, 80, 20 }, "Room Name:");
-            GuiTextBox(Rectangle{ popupRect.x + 110, popupRect.y + 40, 250, 40 }, roomName, 64, false);
+            if (GuiTextBox(Rectangle{ popupRect.x + 110, popupRect.y + 40, 250, 40 }, roomName, 64, roomNameBoxEditMode)) {
+                roomNameBoxEditMode = !roomNameBoxEditMode;
+            }
 
             GuiLabel(Rectangle{ popupRect.x + 20, popupRect.y + 100, 80, 20 }, "Capacity:");
-            GuiTextBox(Rectangle{ popupRect.x + 110, popupRect.y + 90, 250, 40 }, roomCapacity, 10, false);
+            if (GuiTextBox(Rectangle{ popupRect.x + 110, popupRect.y + 90, 250, 40 }, roomCapacity, 10, roomCapacityBoxEditMode)) {
+                roomCapacityBoxEditMode = !roomCapacityBoxEditMode;
+            }
 
             if (GuiButton(Rectangle{ popupRect.x + popupWidth/2 - 50, popupRect.y + 150, 100, 40 }, "Create")) {
                 try {
                     int capacity = std::stoi(roomCapacity);
-                    roomManager.addRoom(loggedInUser, roomName, capacity);
+                    roomManager.addRoom(loggedInUser, roomName, capacity, true); // Add room as available by default
                     roomManager.saveRooms(); // Persist change
                     showAddRoomPopup = false;
                 } catch (const std::exception& e) {
