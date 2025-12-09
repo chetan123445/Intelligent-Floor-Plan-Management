@@ -34,20 +34,19 @@ private:
 class RoomManager {
 public:
     RoomManager();
+    void loadRooms();
     void uploadRoom(const std::string& adminName);
-    void uploadRoom(const std::string& adminName, const std::string& roomName, int capacity, bool isAvailable);
     void modifyRoom(const std::string& adminName);
     void modifyRoom(const std::string& adminName, const std::string& roomName, int capacity, bool isAvailable);
     void viewRoom();
     std::vector<Room>& getRooms();
     void saveRooms();
     Room* findRoom(const std::string& roomName);
+    void addRoom(const std::string& adminName, const std::string& roomName, int capacity, bool isAvailable = true);
 
 private:
     std::vector<Room> rooms;
     const std::string ROOMS_FILE = "rooms.txt";
-
-    void loadRooms();
 };
 
 #endif // ROOM_HPP

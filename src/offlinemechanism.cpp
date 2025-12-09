@@ -112,17 +112,30 @@ void OfflineManager::synchronizeChanges() {
 }
 
 void OfflineManager::applyUploadRoom(const std::string& adminName, const std::string& roomName, int capacity, bool isAvailable) {
-    rm.uploadRoom(adminName, roomName, capacity, isAvailable);
+    rm.addRoom(adminName, roomName, capacity, isAvailable);
 }
 
 void OfflineManager::applyModifyRoom(const std::string& adminName, const std::string& roomName, int capacity, bool isAvailable) {
     rm.modifyRoom(adminName, roomName, capacity, isAvailable);
 }
 
-void OfflineManager::applyRegisterNewAdmin(const std::string& adminName, const std::string& newAdminUsername, const std::string& newAdminPassword) {
+void OfflineManager::applyRegisterNewAdmin(const std::string& /*adminName*/, const std::string& newAdminUsername, const std::string& newAdminPassword) {
     auth.registerAdmin(newAdminUsername, newAdminPassword);
 }
 
 void OfflineManager::applyReleaseRoom(const std::string& username, const std::string& roomName) {
     rbs.releaseRoom(username, roomName);
+}
+
+std::vector<std::string> OfflineManager::getQueueForDisplay() {
+    std::vector<std::string> queue;
+    std::ifstream offlineFile(OFFLINE_CHANGES_FILE);
+    if (offlineFile.is_open()) {
+        std::string line;
+        while (std::getline(offlineFile, line)) {
+            queue.push_back(line);
+        }
+        offlineFile.close();
+    }
+    return queue;
 }

@@ -16,6 +16,7 @@ public:
     bool registerUser(const std::string& username, const std::string& password);
     bool registerAdmin(const std::string& username, const std::string& password);
     bool loginUser(const std::string& username, const std::string& password, Role& role);
+    bool login(const std::string& username, const std::string& password, bool isAdmin);
 
 private:
     std::unordered_map<std::string, std::pair<std::size_t, Role>> users;

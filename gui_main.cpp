@@ -1,0 +1,320 @@
+#include "raylib.h"
+#include "auth.hpp"
+#include "room.hpp"
+#include "meetingroom.hpp"
+#include "offlinemechanism.hpp"
+#include <vector>
+#include <string>
+#include <iostream>
+
+// Force include dependencies for raygui implementation
+#include <stdlib.h> // Required for: strtod
+#include "raylib.h" // Required for: GetMousePosition, etc.
+
+#define RAYGUI_IMPLEMENTATION
+#include "raygui.h"
+
+// GUI State Management
+enum class AppState { LOGIN, USER_DASHBOARD, ADMIN_DASHBOARD };
+
+//----------------------------------------------------------------------------------
+// UI Helper Functions
+//----------------------------------------------------------------------------------
+void DrawCenteredText(const char* text, int y, int fontSize, Color color) {
+    int textWidth = MeasureText(text, fontSize);
+    DrawText(text, (GetScreenWidth() - textWidth) / 2, y, fontSize, color);
+}
+
+int main() {
+    // Initialization
+    //--------------------------------------------------------------------------------------
+    const int screenWidth = 1280;
+    const int screenHeight = 720;
+
+    InitWindow(screenWidth, screenHeight, "Intelligent Floor Plan Management");
+    SetTargetFPS(60);
+
+    // Application State
+    AppState currentState = AppState::LOGIN;
+    Authentication auth;
+    RoomManager roomManager;
+    RoomBookingSystem bookingSystem(roomManager);
+    OfflineManager offlineManager(auth, roomManager, bookingSystem);
+
+    // Login Screen state
+    char username[64] = "";
+    char password[64] = "";
+    bool passwordBoxEditMode = false;
+    bool usernameBoxEditMode = false;
+    std::string loginMessage = "";
+    bool isAdminLogin = false;
+
+    // Dashboard state
+    std::string loggedInUser;
+    Vector2 scroll = { 0, 0 };
+
+    // Room creation state
+    bool showAddRoomPopup = false;
+    char roomName[64] = "";
+    char roomCapacity[10] = "";
+
+    // Book room state
+    bool showBookRoomPopup = false;
+    char bookCapacity[10] = "";
+    std::string bookingMessage = "";
+
+    // View Offline Queue state
+    bool showOfflineQueuePopup = false;
+
+    //--------------------------------------------------------------------------------------
+
+    // Main game loop
+    while (!WindowShouldClose()) {
+        // Update
+        //----------------------------------------------------------------------------------
+        // Handle state transitions and logic
+        //----------------------------------------------------------------------------------
+
+        // Draw
+        //----------------------------------------------------------------------------------
+        BeginDrawing();
+        ClearBackground(RAYWHITE);
+
+        switch (currentState) {
+            case AppState::LOGIN:
+            {
+                DrawCenteredText("LOGIN / REGISTER", 40, 40, DARKGRAY);
+
+                // Username Input
+                if (GuiTextBox(Rectangle{ (float)screenWidth / 2 - 150, 140, 300, 40 }, username, 64, usernameBoxEditMode)) {
+                    usernameBoxEditMode = !usernameBoxEditMode;
+                }
+
+                // Password Input
+                if (GuiTextBox(Rectangle{ (float)screenWidth / 2 - 150, 190, 300, 40 }, password, 64, passwordBoxEditMode)) {
+                    passwordBoxEditMode = !passwordBoxEditMode;
+                }
+
+                // Is Admin Checkbox
+                GuiCheckBox(Rectangle{ (float)screenWidth / 2 - 150, 240, 20, 20 }, "Login as Admin", &isAdminLogin);
+
+                // Login Button
+                if (GuiButton(Rectangle{ (float)screenWidth / 2 - 150, 280, 145, 40 }, "Login")) {
+                    if (auth.login(username, password, isAdminLogin)) {
+                        loginMessage = "Login successful!";
+                        loggedInUser = username;
+                        roomManager.loadRooms(); // Ensure rooms are loaded after login
+                        if (isAdminLogin) {
+                            currentState = AppState::ADMIN_DASHBOARD;
+                        } else {
+                            currentState = AppState::USER_DASHBOARD;
+                        }
+                    } else {
+                        loginMessage = "Invalid credentials. Please try again.";
+                    }
+                }
+
+                // Register Button
+                if (GuiButton(Rectangle{ (float)screenWidth / 2 + 5, 280, 145, 40 }, "Register")) {
+                    if (auth.registerUser(username, password)) {
+                        loginMessage = "Registration successful! Please login.";
+                    } else {
+                        loginMessage = "Username already exists or invalid data.";
+                    }
+                }
+
+                // Display login message
+                DrawCenteredText(loginMessage.c_str(), 340, 20, loginMessage.find("successful") != std::string::npos ? GREEN : MAROON);
+            }
+            break;
+
+            case AppState::USER_DASHBOARD:
+            case AppState::ADMIN_DASHBOARD:
+            {
+                // Common Dashboard UI
+                std::string welcome_text = "Welcome, " + loggedInUser + "!";
+                DrawText(welcome_text.c_str(), 20, 20, 20, DARKGRAY);
+
+                if (GuiButton(Rectangle{ (float)screenWidth - 120, 20, 100, 30 }, "Logout")) {
+                    loggedInUser = "";
+                    // Clear credentials
+                    memset(username, 0, 64);
+                    memset(password, 0, 64);
+                    loginMessage = "";
+                    isAdminLogin = false;
+                    currentState = AppState::LOGIN;
+                    // Reset popups
+                    showAddRoomPopup = false;
+                    showBookRoomPopup = false;
+                    showOfflineQueuePopup = false;
+                    continue; // Skip rest of the frame
+                }
+
+                // --- Sidebar for actions ---
+                int sidebarWidth = 250;
+                DrawRectangle(0, 70, sidebarWidth, screenHeight - 70, LIGHTGRAY);
+                DrawLine(sidebarWidth, 70, sidebarWidth, screenHeight, DARKGRAY);
+
+                int buttonY = 80;
+                if (currentState == AppState::ADMIN_DASHBOARD) {
+                    DrawCenteredText("Admin Menu", buttonY, 20, DARKGRAY);
+                    buttonY += 40;
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "Add Room")) {
+                        showAddRoomPopup = true;
+                        // Reset fields
+                        memset(roomName, 0, 64);
+                        memset(roomCapacity, 0, 10);
+                    }
+                    buttonY += 40;
+                    // Add other admin buttons here: Modify Room, Add Admin etc.
+                } else { // User Menu
+                    DrawCenteredText("User Menu", buttonY, 20, DARKGRAY);
+                    buttonY += 40;
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "Book a Room")) {
+                        showBookRoomPopup = true;
+                        bookingMessage = "";
+                        memset(bookCapacity, 0, 10);
+                    }
+                    buttonY += 40;
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "Release My Room")) {
+                        bookingSystem.releaseRoom(loggedInUser);
+                        bookingMessage = "Release request processed.";
+                    }
+                }
+
+                buttonY += 60; // Gap
+                if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "View Offline Queue")) {
+                    showOfflineQueuePopup = true;
+                }
+
+                // --- Main content area for rooms ---
+                DrawText("Floor Plan", sidebarWidth + 20, 80, 30, GRAY);
+
+                const std::vector<Room>& rooms = roomManager.getRooms();
+                int roomBoxSize = 100;
+                int padding = 20;
+                int roomsPerRow = (screenWidth - sidebarWidth - padding) / (roomBoxSize + padding);
+                
+                for (size_t i = 0; i < rooms.size(); ++i) {
+                    int row = i / roomsPerRow;
+                    int col = i % roomsPerRow;
+
+                    int x = sidebarWidth + padding + col * (roomBoxSize + padding);
+                    int y = 140 + row * (roomBoxSize + padding);
+
+                    Color roomColor = rooms[i].isAvailable() ? LIME : MAROON;
+                    DrawRectangle(x, y, roomBoxSize, roomBoxSize, roomColor);
+                    DrawRectangleLines(x, y, roomBoxSize, roomBoxSize, DARKBROWN);
+
+                    DrawText(rooms[i].getName().c_str(), x + 10, y + 10, 20, WHITE);
+                    std::string capacityStr = "Cap: " + std::to_string(rooms[i].getCapacity());
+                    DrawText(capacityStr.c_str(), x + 10, y + 35, 15, WHITE);
+
+                    if (!rooms[i].isAvailable()) {
+                        std::string bookedByStr = "By: " + rooms[i].getBookedBy();
+                        DrawText(bookedByStr.c_str(), x + 10, y + 60, 15, YELLOW);
+                    } else {
+                        DrawText("Available", x + 10, y + 60, 15, WHITE);
+                    }
+                }
+                 if (rooms.empty()) {
+                    DrawText("No rooms created yet. Admin needs to add rooms.", sidebarWidth + 20, 150, 20, GRAY);
+                }
+
+            }
+            break;
+        }
+
+        // --- Popups ---
+        if (showAddRoomPopup) {
+            int popupWidth = 400;
+            int popupHeight = 250;
+            Rectangle popupRect = { (float)screenWidth/2 - popupWidth/2, (float)screenHeight/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
+            
+            showAddRoomPopup = !GuiWindowBox(popupRect, "Add New Room");
+
+            GuiLabel(Rectangle{ popupRect.x + 20, popupRect.y + 50, 80, 20 }, "Room Name:");
+            GuiTextBox(Rectangle{ popupRect.x + 110, popupRect.y + 40, 250, 40 }, roomName, 64, false);
+
+            GuiLabel(Rectangle{ popupRect.x + 20, popupRect.y + 100, 80, 20 }, "Capacity:");
+            GuiTextBox(Rectangle{ popupRect.x + 110, popupRect.y + 90, 250, 40 }, roomCapacity, 10, false);
+
+            if (GuiButton(Rectangle{ popupRect.x + popupWidth/2 - 50, popupRect.y + 150, 100, 40 }, "Create")) {
+                try {
+                    int capacity = std::stoi(roomCapacity);
+                    roomManager.addRoom(loggedInUser, roomName, capacity);
+                    roomManager.saveRooms(); // Persist change
+                    showAddRoomPopup = false;
+                } catch (const std::exception& e) {
+                    // Handle invalid number format for capacity
+                    std::cerr << "Invalid capacity input: " << e.what() << std::endl;
+                }
+            }
+        }
+
+        if (showBookRoomPopup) {
+            int popupWidth = 400;
+            int popupHeight = 220;
+            Rectangle popupRect = { (float)screenWidth/2 - popupWidth/2, (float)screenHeight/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
+            
+            showBookRoomPopup = !GuiWindowBox(popupRect, "Book a Room");
+
+            GuiLabel(Rectangle{ popupRect.x + 20, popupRect.y + 50, 120, 20 }, "Required Capacity:");
+            GuiTextBox(Rectangle{ popupRect.x + 150, popupRect.y + 40, 210, 40 }, bookCapacity, 10, false);
+
+            if (GuiButton(Rectangle{ popupRect.x + popupWidth/2 - 50, popupRect.y + 100, 100, 40 }, "Find & Book")) {
+                try {
+                    int capacity = std::stoi(bookCapacity);
+                    Room* bookedRoom = bookingSystem.bookRoom(loggedInUser, capacity, ""); // Empty room name to find any
+                    if (bookedRoom) {
+                        bookingMessage = "Successfully booked room: " + bookedRoom->getName();
+                    } else {
+                        bookingMessage = "No suitable room available.";
+                    }
+                    showBookRoomPopup = false;
+                } catch (const std::exception& e) {
+                    bookingMessage = "Invalid capacity entered.";
+                    std::cerr << "Invalid capacity input: " << e.what() << std::endl;
+                }
+            }
+            
+            DrawText(bookingMessage.c_str(), popupRect.x + 20, popupRect.y + 160, 20, MAROON);
+        }
+
+        if (showOfflineQueuePopup) {
+            int popupWidth = 600;
+            int popupHeight = 400;
+            Rectangle popupRect = { (float)screenWidth/2 - popupWidth/2, (float)screenHeight/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
+            
+            showOfflineQueuePopup = !GuiWindowBox(popupRect, "Offline Action Queue");
+
+            std::vector<std::string> queue = offlineManager.getQueueForDisplay();
+
+            if (queue.empty()) {
+                DrawText("Offline queue is empty.", popupRect.x + 20, popupRect.y + 50, 20, GRAY);
+            } else {
+                Rectangle view = { popupRect.x + 10, popupRect.y + 40, popupRect.width - 20, popupRect.height - 50 };
+                Rectangle content = { view.x, view.y, view.width - 20, (float)queue.size() * 25 };
+                Rectangle viewScroll = { 0 };
+                
+                GuiScrollPanel(view, NULL, content, &scroll, &viewScroll);
+
+                BeginScissorMode(view.x, view.y, view.width, view.height);
+                for(size_t i = 0; i < queue.size(); ++i) {
+                    DrawText(queue[i].c_str(), view.x + 10 + scroll.x, view.y + 10 + i * 25 + scroll.y, 15, DARKGRAY);
+                }
+                EndScissorMode();
+            }
+        }
+
+        EndDrawing();
+        //----------------------------------------------------------------------------------
+    }
+
+    // De-Initialization
+    //--------------------------------------------------------------------------------------
+    CloseWindow();        // Close window and OpenGL context
+    //--------------------------------------------------------------------------------------
+
+    return 0;
+}

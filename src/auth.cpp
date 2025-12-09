@@ -82,6 +82,13 @@ bool Authentication::registerAdmin(const std::string& username, const std::strin
     return true;
 }
 
+bool Authentication::login(const std::string& username, const std::string& password, bool isAdmin) {
+    Role role;
+    if (!loginUser(username, password, role)) return false;
+
+    return (isAdmin && role == Role::ADMIN) || (!isAdmin && role == Role::USER);
+}
+
 bool Authentication::loginUser(const std::string& username, const std::string& password, Role& role) {
     auto it = users.find(username);
     if (it != users.end()) {

@@ -102,21 +102,6 @@ void RoomManager::uploadRoom(const std::string& adminName) {
     UI::displayMessage("Room '" + roomName + "' has been uploaded successfully.");
 }
 
-void RoomManager::uploadRoom(const std::string& adminName, const std::string& roomName, int capacity, bool isAvailable) {
-    auto it = std::find_if(rooms.begin(), rooms.end(), [&](const Room& r) {
-        return r.getName() == roomName;
-    });
-
-    if (it != rooms.end()) {
-        UI::displayMessage("Error: Room '" + roomName + "' already exists. Please choose a different name.");
-        return;
-    }
-
-    rooms.emplace_back(roomName, adminName, capacity, isAvailable);
-    saveRooms();
-    UI::displayMessage("Room '" + roomName + "' has been uploaded successfully.");
-}
-
 void RoomManager::modifyRoom(const std::string& adminName) {
     std::string roomName;
     int capacity;
@@ -146,6 +131,21 @@ void RoomManager::modifyRoom(const std::string& adminName) {
     } else {
         UI::displayMessage("Error: Room '" + roomName + "' does not exist.");
     }
+}
+
+void RoomManager::addRoom(const std::string& adminName, const std::string& roomName, int capacity, bool isAvailable) {
+    auto it = std::find_if(rooms.begin(), rooms.end(), [&](const Room& r) {
+        return r.getName() == roomName;
+    });
+
+    if (it != rooms.end()) {
+        // In GUI mode, we might want to handle this message differently, but for now, it's fine.
+        // UI::displayMessage("Error: Room '" + roomName + "' already exists.");
+        return;
+    }
+
+    rooms.emplace_back(roomName, adminName, capacity, isAvailable);
+    saveRooms();
 }
 
 void RoomManager::modifyRoom(const std::string& adminName, const std::string& roomName, int capacity, bool isAvailable) {

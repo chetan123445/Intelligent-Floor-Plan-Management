@@ -10,6 +10,7 @@ class RoomBookingSystem {
 public:
     RoomBookingSystem(RoomManager& rm);
     void bookRoom(const std::string& username);
+    Room* bookRoom(const std::string& username, int participants, const std::string& roomName);
     void releaseRoom(const std::string& username);
     void releaseRoom(const std::string& username, const std::string& roomName);
     void showRoomStatuses(const std::string& username);

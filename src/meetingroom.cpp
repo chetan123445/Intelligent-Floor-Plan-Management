@@ -171,6 +171,28 @@ void RoomBookingSystem::bookRoom(const std::string& username) {
 
 }
 
+Room* RoomBookingSystem::bookRoom(const std::string& username, int participants, const std::string& roomName) {
+    Room* roomToBook = nullptr;
+
+    if (!roomName.empty()) {
+        roomToBook = rm.findRoom(roomName);
+    } else {
+        for (auto& room : rm.getRooms()) {
+            if (room.isAvailable() && room.getCapacity() >= participants) {
+                roomToBook = &room;
+                break; // Find the first suitable room
+            }
+        }
+    }
+
+    if (roomToBook && roomToBook->isAvailable() && roomToBook->getCapacity() >= participants) {
+        roomToBook->setAvailable(false);
+        roomToBook->setBookedBy(username);
+        rm.saveRooms();
+        return roomToBook;
+    }
+    return nullptr; // No suitable room found or room is not available
+}
 
 
 void RoomBookingSystem::releaseRoom(const std::string& username) {
@@ -301,7 +323,7 @@ void RoomBookingSystem::releaseRoom(const std::string& username, const std::stri
 
 
 
-void RoomBookingSystem::showRoomStatuses(const std::string& username) {
+void RoomBookingSystem::showRoomStatuses(const std::string& /*username*/) {
 
     if (rm.getRooms().empty()) {
 
@@ -334,7 +356,3 @@ void RoomBookingSystem::showRoomStatuses(const std::string& username) {
     }
 
 }
-
-
-
-
