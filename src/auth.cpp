@@ -100,3 +100,48 @@ bool Authentication::loginUser(const std::string& username, const std::string& p
     }
     return false; // Invalid username or password
 }
+
+bool Authentication::deleteUser(const std::string& usernameToDelete) {
+    if (usernameToDelete == "Chetan") {
+        UI::displayMessage("Error: Cannot delete superadmin 'Chetan'.");
+        return false;
+    }
+
+    auto it = users.find(usernameToDelete);
+    if (it != users.end()) {
+        users.erase(it);
+        save_users();
+        UI::displayMessage("User/Admin '" + usernameToDelete + "' deleted successfully.");
+        return true;
+    } else {
+        UI::displayMessage("Error: User/Admin '" + usernameToDelete + "' not found.");
+        return false;
+    }
+}
+
+bool Authentication::editUser(const std::string& usernameToEdit, const std::string& newPassword, Role newRole) {
+    if (usernameToEdit == "Chetan") {
+        UI::displayMessage("Error: Cannot edit superadmin 'Chetan'.");
+        return false;
+    }
+
+    auto it = users.find(usernameToEdit);
+    if (it != users.end()) {
+        it->second.first = hash_password(newPassword);
+        it->second.second = newRole;
+        save_users();
+        UI::displayMessage("User/Admin '" + usernameToEdit + "' updated successfully.");
+        return true;
+    } else {
+        UI::displayMessage("Error: User/Admin '" + usernameToEdit + "' not found.");
+        return false;
+    }
+}
+
+std::vector<std::pair<std::string, Authentication::Role>> Authentication::getUsersAndAdmins() const {
+    std::vector<std::pair<std::string, Role>> list;
+    for (const auto& pair : users) {
+        list.push_back({pair.first, pair.second.second});
+    }
+    return list;
+}

@@ -168,16 +168,6 @@ void handleUserMenu(const std::string& username, RoomBookingSystem& rbs, Offline
                     rbs.bookRoom(username);
                 }
                 break;
-            case 2:
-                if (om.isOffline()) {
-                    std::string roomName;
-                    std::cout << "Enter room name to release: ";
-                    std::cin >> roomName;
-                    om.queueReleaseRoom(username, roomName);
-                } else {
-                    rbs.releaseRoom(username);
-                }
-                break;
             case 3:
                 rbs.showRoomStatuses(username);
                 break;

@@ -64,6 +64,29 @@ int main() {
     char roomCapacity[10] = "";
     bool roomNameBoxEditMode = false;
 
+    // Admin Management state
+    bool showAddAdminPopup = false;
+    char newAdminUsername[64] = "";
+    char newAdminPassword[64] = "";
+    bool newAdminUsernameEditMode = false;
+    bool newAdminPasswordEditMode = false;
+    std::string addAdminMessage = "";
+
+    bool showDeleteUserAdminPopup = false;
+    char deleteTargetUsername[64] = "";
+    bool deleteTargetUsernameEditMode = false;
+    std::string deleteUserAdminMessage = "";
+
+    bool showEditUserAdminPopup = false;
+    char editTargetUsername[64] = "";
+    char editNewPassword[64] = "";
+    int editNewRoleActive = 0; // 0 for USER, 1 for ADMIN (for GuiDropdownBox)
+    bool editTargetUsernameEditMode = false;
+    bool editNewPasswordEditMode = false;
+    std::string editUserAdminMessage = "";
+
+    bool showViewUsersAdminsPopup = false;
+    std::vector<std::string> usersAdminsDisplayList;
     // Room modification state
     bool showModifyRoomPopup = false;
     char modifyRoomName[64] = "";
@@ -87,6 +110,7 @@ int main() {
     bool showDeleteRoomPopup = false;
     char deleteRoomName[64] = "";
     bool deleteRoomNameEditMode = false;
+    Vector2 usersAdminsScroll = { 0, 0 };
 
     // Room Search and Filter state
     char searchRoomName[64] = "";
@@ -275,6 +299,34 @@ int main() {
                         memset(deleteRoomName, 0, 64);
                     }
                     // Add other admin buttons here: Modify Room, Add Admin etc.
+                    buttonY += 40;
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "Add Admin")) {
+                        showAddAdminPopup = true;
+                        memset(newAdminUsername, 0, 64);
+                        memset(newAdminPassword, 0, 64);
+                        addAdminMessage = "";
+                    }
+                    buttonY += 40;
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "Delete User/Admin")) {
+                        showDeleteUserAdminPopup = true;
+                        memset(deleteTargetUsername, 0, 64);
+                        deleteUserAdminMessage = "";
+                    }
+                    buttonY += 40;
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "Edit User/Admin")) {
+                        showEditUserAdminPopup = true;
+                        memset(editTargetUsername, 0, 64);
+                        memset(editNewPassword, 0, 64);
+                        editNewRoleActive = 0; // Default to User
+                        editUserAdminMessage = "";
+                    }
+                    buttonY += 40;
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "View Users/Admins")) {
+                        showViewUsersAdminsPopup = true;
+                        usersAdminsDisplayList.clear(); // Clear previous list
+                        // Populate list when popup opens
+                    }
+
                 } else { // User Menu
                     DrawCenteredText("User Menu", buttonY, 20, DARKGRAY);
                     buttonY += 40;
@@ -283,23 +335,6 @@ int main() {
                         bookingMessage = ""; // Clear previous messages
                         memset(bookCapacity, 0, 10); // Clear capacity input
                         memset(bookRoomName, 0, 64); // Clear room name input
-                    }
-                    buttonY += 40;
-                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "Release My Room")) {
-                        // For simplicity, we'll assume releaseRoom in GUI will always ask for room name
-                        // A more robust GUI would list booked rooms and allow selection.
-                        // For now, we'll just queue a generic release or show a message.
-                        // If offline, we can't directly ask for room name in a non-blocking way here.
-                        // This would typically be handled by another popup or a list of booked rooms.
-                        // For this example, we'll just queue a dummy release or show a message.
-                        if (offlineManager.isOffline()) {
-                            // Cannot release specific room without user input in this flow.
-                            // A proper GUI would have a list of booked rooms to select from.
-                            bookingMessage = "Cannot release specific room while offline. Go online to manage bookings.";
-                        } else {
-                            bookingSystem.releaseRoom(loggedInUser); // This will prompt for room name in console
-                        }
-                        bookingMessage = "Release request processed.";
                     }
                 }
 
@@ -323,17 +358,15 @@ int main() {
                 contentAreaY += 40;
 
                 // Filters
-                GuiCheckBox(Rectangle{ (float)contentAreaX, (float)contentAreaY, 20, 20 }, "Available Only", &filterAvailableRooms);
-                contentAreaY += 30;
-                GuiCheckBox(Rectangle{ (float)contentAreaX, (float)contentAreaY, 20, 20 }, "Booked Only", &filterBookedRooms);
+                GuiCheckBox(Rectangle{ (float)contentAreaX, (float)contentAreaY, 20, 20 }, "Available Only", &filterAvailableRooms);                
+                GuiCheckBox(Rectangle{ (float)contentAreaX, (float)contentAreaY + 30, 20, 20 }, "Booked Only", &filterBookedRooms);
                 
                 // Adjust position for capacity filter after new checkbox
-                contentAreaY -= 30; // Move up to align with the first checkbox row
                 GuiLabel(Rectangle{ (float)contentAreaX + 200, (float)contentAreaY, 80, 20 }, "Min Capacity:"); // Align with first checkbox
                 if (GuiTextBox(Rectangle{ (float)contentAreaX + 300, (float)contentAreaY - 5, 100, 30 }, filterCapacity, 10, filterCapacityEditMode)) { // Align with first checkbox
                     filterCapacityEditMode = !filterCapacityEditMode;
                 }
-                contentAreaY += 40;
+                contentAreaY += 60; // Increase vertical space to ensure rooms are drawn below all filters
 
                 // Filtered Rooms Logic
                 std::vector<Room> displayedRooms;
@@ -360,7 +393,7 @@ int main() {
                     } else if (filterBookedRooms) {
                         matchesAvailability = !room.isAvailable();
                     } else {
-                        matchesAvailability = false;
+                        matchesAvailability = true; // Show all rooms by default if no specific availability filter is selected
                     }
 
                     bool matchesCapacity = true;
@@ -590,6 +623,162 @@ int main() {
                 // This is a placeholder for a message if deletion fails due to booking
                 // The actual message is drawn inside the button logic.
             }
+        }
+
+        if (showAddAdminPopup) {
+            int popupWidth = 400;
+            int popupHeight = 300;
+            Rectangle popupRect = { (float)screenWidth/2 - popupWidth/2, (float)screenHeight/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
+            
+            showAddAdminPopup = !GuiWindowBox(popupRect, "Add New Admin");
+
+            GuiLabel(Rectangle{ popupRect.x + 20, popupRect.y + 50, 100, 20 }, "Username:");
+            if (GuiTextBox(Rectangle{ popupRect.x + 130, popupRect.y + 40, 250, 40 }, newAdminUsername, 64, newAdminUsernameEditMode)) {
+                newAdminUsernameEditMode = !newAdminUsernameEditMode;
+            }
+
+            GuiLabel(Rectangle{ popupRect.x + 20, popupRect.y + 100, 100, 20 }, "Password:");
+            // Obscure password input
+            char newAdminPasswordSecret[64];
+            memset(newAdminPasswordSecret, '*', strlen(newAdminPassword));
+            newAdminPasswordSecret[strlen(newAdminPassword)] = '\0';
+            if (GuiTextBox(Rectangle{ popupRect.x + 130, popupRect.y + 90, 250, 40 }, newAdminPasswordEditMode ? newAdminPassword : newAdminPasswordSecret, 64, newAdminPasswordEditMode)) {
+                newAdminPasswordEditMode = !newAdminPasswordEditMode;
+            }
+
+            if (GuiButton(Rectangle{ popupRect.x + popupWidth/2 - 50, popupRect.y + 150, 100, 40 }, "Register")) {
+                if (offlineManager.isOffline()) {
+                    offlineManager.queueRegisterNewAdmin(loggedInUser, newAdminUsername, newAdminPassword);
+                    addAdminMessage = "Admin registration queued.";
+                } else {
+                    if (auth.registerAdmin(newAdminUsername, newAdminPassword)) {
+                        addAdminMessage = "Admin registered successfully!";
+                    } else {
+                        addAdminMessage = "Admin registration failed (username exists).";
+                    }
+                }
+            }
+            DrawText(addAdminMessage.c_str(), popupRect.x + 20, popupRect.y + 210, 20, MAROON);
+        }
+
+        if (showDeleteUserAdminPopup) {
+            int popupWidth = 400;
+            int popupHeight = 250;
+            Rectangle popupRect = { (float)screenWidth/2 - popupWidth/2, (float)screenHeight/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
+            
+            showDeleteUserAdminPopup = !GuiWindowBox(popupRect, "Delete User/Admin");
+
+            GuiLabel(Rectangle{ popupRect.x + 20, popupRect.y + 50, 100, 20 }, "Username:");
+            if (GuiTextBox(Rectangle{ popupRect.x + 130, popupRect.y + 40, 250, 40 }, deleteTargetUsername, 64, deleteTargetUsernameEditMode)) {
+                deleteTargetUsernameEditMode = !deleteTargetUsernameEditMode;
+            }
+
+            if (GuiButton(Rectangle{ popupRect.x + popupWidth/2 - 50, popupRect.y + 150, 100, 40 }, "Delete")) {
+                if (std::string(deleteTargetUsername) == "Chetan") {
+                    deleteUserAdminMessage = "Cannot delete superadmin 'Chetan'.";
+                } else {
+                    if (offlineManager.isOffline()) {
+                        offlineManager.queueDeleteUser(deleteTargetUsername);
+                        deleteUserAdminMessage = "Deletion queued.";
+                    } else {
+                        if (auth.deleteUser(deleteTargetUsername)) {
+                            deleteUserAdminMessage = "User/Admin deleted successfully.";
+                        } else {
+                            deleteUserAdminMessage = "User/Admin not found.";
+                        }
+                    }
+                }
+            }
+            DrawText(deleteUserAdminMessage.c_str(), popupRect.x + 20, popupRect.y + 200, 20, MAROON);
+        }
+
+        if (showEditUserAdminPopup) {
+            int popupWidth = 450;
+            int popupHeight = 350;
+            Rectangle popupRect = { (float)screenWidth/2 - popupWidth/2, (float)screenHeight/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
+            
+            showEditUserAdminPopup = !GuiWindowBox(popupRect, "Edit User/Admin Details");
+
+            GuiLabel(Rectangle{ popupRect.x + 20, popupRect.y + 50, 100, 20 }, "Username:");
+            if (GuiTextBox(Rectangle{ popupRect.x + 130, popupRect.y + 40, 250, 40 }, editTargetUsername, 64, editTargetUsernameEditMode)) {
+                editTargetUsernameEditMode = !editTargetUsernameEditMode;
+            }
+
+            if (GuiButton(Rectangle{ popupRect.x + 130, popupRect.y + 90, 100, 30 }, "Load Details")) {
+                // Find user/admin to pre-fill details
+                std::vector<std::pair<std::string, Authentication::Role>> users = auth.getUsersAndAdmins();
+                bool found = false;
+                for (const auto& userPair : users) {
+                    if (userPair.first == std::string(editTargetUsername)) {
+                        // For simplicity, we don't load password, just role
+                        editNewRoleActive = (userPair.second == Authentication::Role::ADMIN) ? 1 : 0;
+                        editUserAdminMessage = "Details loaded.";
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    editUserAdminMessage = "User/Admin not found.";
+                    editNewRoleActive = 0;
+                }
+            }
+
+            GuiLabel(Rectangle{ popupRect.x + 20, popupRect.y + 140, 100, 20 }, "New Password:");
+            char editNewPasswordSecret[64];
+            memset(editNewPasswordSecret, '*', strlen(editNewPassword));
+            editNewPasswordSecret[strlen(editNewPassword)] = '\0';
+            if (GuiTextBox(Rectangle{ popupRect.x + 130, popupRect.y + 130, 250, 40 }, editNewPasswordEditMode ? editNewPassword : editNewPasswordSecret, 64, editNewPasswordEditMode)) {
+                editNewPasswordEditMode = !editNewPasswordEditMode;
+            }
+
+            GuiLabel(Rectangle{ popupRect.x + 20, popupRect.y + 190, 100, 20 }, "New Role:");
+            GuiDropdownBox(Rectangle{ popupRect.x + 130, popupRect.y + 180, 150, 40 }, "USER;ADMIN", &editNewRoleActive, true);
+
+            if (GuiButton(Rectangle{ popupRect.x + popupWidth/2 - 70, popupRect.y + 240, 140, 40 }, "Save Changes")) {
+                if (std::string(editTargetUsername) == "Chetan") {
+                    editUserAdminMessage = "Cannot edit superadmin 'Chetan'.";
+                } else {
+                    Authentication::Role newRole = (editNewRoleActive == 1) ? Authentication::Role::ADMIN : Authentication::Role::USER;
+                    if (offlineManager.isOffline()) {
+                        offlineManager.queueEditUser(editTargetUsername, editNewPassword, newRole);
+                        editUserAdminMessage = "Modification queued.";
+                    } else {
+                        if (auth.editUser(editTargetUsername, editNewPassword, newRole)) {
+                            editUserAdminMessage = "User/Admin modified successfully.";
+                        } else {
+                            editUserAdminMessage = "User/Admin not found.";
+                        }
+                    }
+                }
+            }
+            DrawText(editUserAdminMessage.c_str(), popupRect.x + 20, popupRect.y + 290, 20, MAROON);
+        }
+
+        if (showViewUsersAdminsPopup) {
+            int popupWidth = 500;
+            int popupHeight = 400;
+            Rectangle popupRect = { (float)screenWidth/2 - popupWidth/2, (float)screenHeight/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
+            
+            showViewUsersAdminsPopup = !GuiWindowBox(popupRect, "Users and Admins");
+
+            if (usersAdminsDisplayList.empty()) { // Populate list only once when opened
+                std::vector<std::pair<std::string, Authentication::Role>> users = auth.getUsersAndAdmins();
+                for (const auto& userPair : users) {
+                    usersAdminsDisplayList.push_back(userPair.first + " (" + (userPair.second == Authentication::Role::ADMIN ? "Admin" : "User") + ")");
+                }
+            }
+
+            Rectangle view = { popupRect.x + 10, popupRect.y + 40, popupRect.width - 20, popupRect.height - 50 };
+            Rectangle content = { view.x, view.y, view.width - 20, (float)usersAdminsDisplayList.size() * 25 };
+            Rectangle viewScroll = { 0 };
+            
+            GuiScrollPanel(view, NULL, content, &usersAdminsScroll, &viewScroll);
+
+            BeginScissorMode(view.x, view.y, view.width, view.height);
+            for(size_t i = 0; i < usersAdminsDisplayList.size(); ++i) {
+                DrawText(usersAdminsDisplayList[i].c_str(), view.x + 10 + usersAdminsScroll.x, view.y + 10 + i * 25 + usersAdminsScroll.y, 15, DARKGRAY);
+            }
+            EndScissorMode();
         }
 
         if (showOfflineQueuePopup) {

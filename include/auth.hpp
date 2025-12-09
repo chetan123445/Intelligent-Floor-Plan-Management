@@ -4,6 +4,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 class Authentication {
 public:
@@ -17,6 +18,9 @@ public:
     bool registerAdmin(const std::string& username, const std::string& password);
     bool loginUser(const std::string& username, const std::string& password, Role& role);
     bool login(const std::string& username, const std::string& password, bool isAdmin);
+    bool deleteUser(const std::string& usernameToDelete);
+    bool editUser(const std::string& usernameToEdit, const std::string& newPassword, Role newRole);
+    std::vector<std::pair<std::string, Role>> getUsersAndAdmins() const;
 
 private:
     std::unordered_map<std::string, std::pair<std::size_t, Role>> users;
