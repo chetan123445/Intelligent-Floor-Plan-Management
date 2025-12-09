@@ -3,6 +3,8 @@
 #include "room.hpp"
 #include "meetingroom.hpp"
 #include "offlinemechanism.hpp"
+#include <random>   // For random number generation
+#include <chrono>   // For seeding the random number generator
 #include <vector>
 #include <string>
 #include <iostream>
@@ -49,6 +51,7 @@ int main() {
     bool usernameBoxEditMode = false;
     std::string loginMessage = "";
     bool isAdminLogin = false;
+    std::string statusMessage = ""; // To display online/offline status
 
     // Dashboard state
     std::string loggedInUser;
@@ -64,10 +67,19 @@ int main() {
     // Book room state
     bool showBookRoomPopup = false;
     char bookCapacity[10] = "";
+    char bookRoomName[64] = ""; // For specific room booking
     std::string bookingMessage = "";
 
     // View Offline Queue state
     bool showOfflineQueuePopup = false;
+
+    // Random offline simulation state
+    std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
+    std::uniform_real_distribution<float> onlineDurationDist(20.0f, 40.0f);   // Stay online for 20-40 seconds
+    std::uniform_real_distribution<float> offlineDurationDist(8.0f, 20.0f);    // Stay offline for 8-20 seconds
+    std::uniform_int_distribution<int> goOfflineChanceDist(1, 100);            // 40% chance to go offline
+
+    float statusChangeTimer = onlineDurationDist(generator); // Time until next status event
 
     //--------------------------------------------------------------------------------------
 
@@ -76,7 +88,28 @@ int main() {
         // Update
         //----------------------------------------------------------------------------------
         // Handle state transitions and logic
+        if (currentState != AppState::LOGIN) {
+            statusChangeTimer -= GetFrameTime();
+
+            if (statusChangeTimer <= 0.0f) {
+                if (!offlineManager.isOffline()) {
+                    // Currently online, check if we should go offline
+                    if (goOfflineChanceDist(generator) <= 40) { // 40% chance to go offline
+                        offlineManager.goOffline();
+                        statusChangeTimer = offlineDurationDist(generator); // Set how long to stay offline
+                    } else {
+                        // Didn't go offline, reset timer for next check
+                        statusChangeTimer = onlineDurationDist(generator);
+                    }
+                } else {
+                    // Currently offline, time to go back online
+                    offlineManager.goOnline();
+                    statusChangeTimer = onlineDurationDist(generator); // Set how long to stay online
+                }
+            }
+        }
         //----------------------------------------------------------------------------------
+
 
         // Draw
         //----------------------------------------------------------------------------------
@@ -153,6 +186,11 @@ int main() {
             case AppState::USER_DASHBOARD:
             case AppState::ADMIN_DASHBOARD:
             {
+                // Display Online/Offline Status
+                statusMessage = offlineManager.isOffline() ? "Status: OFFLINE" : "Status: ONLINE";
+                DrawText(statusMessage.c_str(), GetScreenWidth() - 250, 55, 18, offlineManager.isOffline() ? RED : GREEN);
+
+
                 // Common Dashboard UI
                 std::string welcome_text = "Welcome, " + loggedInUser + "!";
                 DrawText(welcome_text.c_str(), 20, 20, 20, DARKGRAY);
@@ -177,6 +215,15 @@ int main() {
                     ToggleFullscreen();
                 }
 
+                // Toggle Online/Offline Button
+                if (GuiButton(Rectangle{ (float)screenWidth - 400, 20, 140, 30 }, offlineManager.isOffline() ? "Go Online" : "Go Offline")) {
+                    if (offlineManager.isOffline()) {
+                        offlineManager.goOnline();
+                    } else {
+                        offlineManager.goOffline();
+                    }
+                }
+
                 // --- Sidebar for actions ---
                 int sidebarWidth = 250;
                 DrawRectangle(0, 70, sidebarWidth, screenHeight - 70, LIGHTGRAY);
@@ -199,12 +246,25 @@ int main() {
                     buttonY += 40;
                     if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "Book a Room")) {
                         showBookRoomPopup = true;
-                        bookingMessage = "";
-                        memset(bookCapacity, 0, 10);
+                        bookingMessage = ""; // Clear previous messages
+                        memset(bookCapacity, 0, 10); // Clear capacity input
+                        memset(bookRoomName, 0, 64); // Clear room name input
                     }
                     buttonY += 40;
                     if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "Release My Room")) {
-                        bookingSystem.releaseRoom(loggedInUser);
+                        // For simplicity, we'll assume releaseRoom in GUI will always ask for room name
+                        // A more robust GUI would list booked rooms and allow selection.
+                        // For now, we'll just queue a generic release or show a message.
+                        // If offline, we can't directly ask for room name in a non-blocking way here.
+                        // This would typically be handled by another popup or a list of booked rooms.
+                        // For this example, we'll just queue a dummy release or show a message.
+                        if (offlineManager.isOffline()) {
+                            // Cannot release specific room without user input in this flow.
+                            // A proper GUI would have a list of booked rooms to select from.
+                            bookingMessage = "Cannot release specific room while offline. Go online to manage bookings.";
+                        } else {
+                            bookingSystem.releaseRoom(loggedInUser); // This will prompt for room name in console
+                        }
                         bookingMessage = "Release request processed.";
                     }
                 }
@@ -273,8 +333,12 @@ int main() {
             if (GuiButton(Rectangle{ popupRect.x + popupWidth/2 - 50, popupRect.y + 150, 100, 40 }, "Create")) {
                 try {
                     int capacity = std::stoi(roomCapacity);
-                    roomManager.addRoom(loggedInUser, roomName, capacity, true); // Add room as available by default
-                    roomManager.saveRooms(); // Persist change
+                    if (offlineManager.isOffline()) {
+                        offlineManager.queueUploadRoom(loggedInUser, roomName, capacity, true);
+                    } else {
+                        roomManager.addRoom(loggedInUser, roomName, capacity, true); // Add room as available by default
+                        roomManager.saveRooms(); // Persist change
+                    }
                     showAddRoomPopup = false;
                 } catch (const std::exception& e) {
                     // Handle invalid number format for capacity
@@ -291,16 +355,32 @@ int main() {
             showBookRoomPopup = !GuiWindowBox(popupRect, "Book a Room");
 
             GuiLabel(Rectangle{ popupRect.x + 20, popupRect.y + 50, 120, 20 }, "Required Capacity:");
-            GuiTextBox(Rectangle{ popupRect.x + 150, popupRect.y + 40, 210, 40 }, bookCapacity, 10, false);
+            // Need an edit mode for bookCapacity
+            static bool bookCapacityEditMode = false;
+            if (GuiTextBox(Rectangle{ popupRect.x + 150, popupRect.y + 40, 210, 40 }, bookCapacity, 10, bookCapacityEditMode)) {
+                bookCapacityEditMode = !bookCapacityEditMode;
+            }
 
-            if (GuiButton(Rectangle{ popupRect.x + popupWidth/2 - 50, popupRect.y + 100, 100, 40 }, "Find & Book")) {
+            GuiLabel(Rectangle{ popupRect.x + 20, popupRect.y + 90, 120, 20 }, "Specific Room (Optional):");
+            static bool bookRoomNameEditMode = false;
+            if (GuiTextBox(Rectangle{ popupRect.x + 150, popupRect.y + 80, 210, 40 }, bookRoomName, 64, bookRoomNameEditMode)) {
+                bookRoomNameEditMode = !bookRoomNameEditMode;
+            }
+
+            if (GuiButton(Rectangle{ popupRect.x + popupWidth/2 - 50, popupRect.y + 140, 100, 40 }, "Find & Book")) {
                 try {
                     int capacity = std::stoi(bookCapacity);
-                    Room* bookedRoom = bookingSystem.bookRoom(loggedInUser, capacity, ""); // Empty room name to find any
-                    if (bookedRoom) {
+                    std::string roomToBook = std::string(bookRoomName);
+                    if (offlineManager.isOffline()) {
+                        offlineManager.queueBookRoom(loggedInUser, capacity, roomToBook);
+                        bookingMessage = "Booking queued for room: " + (roomToBook.empty() ? "any suitable" : roomToBook);
+                    } else {
+                        Room* bookedRoom = bookingSystem.bookRoom(loggedInUser, capacity, roomToBook);
+                        if (bookedRoom) {
                         bookingMessage = "Successfully booked room: " + bookedRoom->getName();
                     } else {
                         bookingMessage = "No suitable room available.";
+                    }
                     }
                     showBookRoomPopup = false;
                 } catch (const std::exception& e) {
@@ -308,8 +388,8 @@ int main() {
                     std::cerr << "Invalid capacity input: " << e.what() << std::endl;
                 }
             }
-            
-            DrawText(bookingMessage.c_str(), popupRect.x + 20, popupRect.y + 160, 20, MAROON);
+
+            DrawText(bookingMessage.c_str(), popupRect.x + 20, popupRect.y + 190, 20, MAROON);
         }
 
         if (showOfflineQueuePopup) {
