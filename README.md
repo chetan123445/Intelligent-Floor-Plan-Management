@@ -31,39 +31,63 @@ Follow these instructions to compile and run the application on your local machi
 - A C++ compiler that supports C++17 (like MinGW g++ on Windows).
 - The **Raylib** library files.
 
-### Compilation
-
-1.  **File Structure**: Ensure your project directory is set up correctly. The necessary Raylib files should be placed in `include` and `lib` folders relative to the source code:
-    ```
-    Intelligent-Floor-Plan-Management/
-    ├── include/
-    │   └── raylib.h
-    ├── lib/
-    │   └── libraylib.a
-    ├── src/
-    │   ├── auth.cpp
-    │   ├── room.cpp
-    │   ├── meetingroom.cpp
-    │   ├── offlinemechanism.cpp
-    │   ├── ui.cpp
-    │   └── history.cpp
-    └── gui_main.cpp
-    ```
-
-2.  **Compile Command**: Open a terminal in the project's root directory (`Intelligent-Floor-Plan-Management`) and run the following command:
-
-    ```bash
-    g++ -std=c++17 -Iinclude -Llib gui_main.cpp src/auth.cpp src/room.cpp src/meetingroom.cpp src/offlinemechanism.cpp src/ui.cpp src/history.cpp -o ifm_gui.exe -lraylib -lopengl32 -lgdi32 -lwinmm -Wall -Wextra
-    ```
-    This command compiles all the necessary source files and links the Raylib library, creating an executable file named `ifm_gui.exe`.
-
-### Running the Application
-
-After successful compilation, run the program from the same terminal:
-
-```bash
-./ifm_gui.exe
+### Directory Structure
 ```
+c:\Users\CHETAN DUDI\OneDrive\Desktop\IFM\Intelligent-Floor-Plan-Management\
+├───.gitignore
+├───build_gui.bat
+├───build.bat
+├───commands.txt
+├───gui_main.cpp
+├───README.md
+├───.git\...
+├───.vscode\
+│   ├───c_cpp_properties.json
+│   ├───launch.json
+│   └───settings.json
+├───include\
+│   ├───auth.hpp
+│   ├───floorplan.hpp
+│   ├───meetingroom.hpp
+│   ├───offlinemechanism.hpp
+│   ├───raygui.h
+│   ├───raylib.h
+│   ├───raymath.h
+│   ├───rlgl.h
+│   ├───room.hpp
+│   └───ui.hpp
+├───lib\
+│   ├───libraylib.a
+│   ├───libraylibdll.a
+│   └───raylib.dll
+├───output\
+│   └───ifm_gui.exe
+└───src\
+    ├───auth.cpp
+    ├───floorplan.cpp
+    ├───history.cpp
+    ├───history.hpp
+    ├───main.cpp
+    ├───meetingroom.cpp
+    ├───offlinemechanism.cpp
+    ├───room.cpp
+    └───ui.cpp
+```
+
+### Compilation and Execution
+
+1.  **Navigate to the project directory**:
+    ```bash
+    cd "C:\Users\CHETAN DUDI\OneDrive\Desktop\IFM\Intelligent-Floor-Plan-Management"
+    ```
+2.  **Build the application**:
+    ```bash
+    ./build_gui.bat
+    ```
+3.  **Run the application**:
+    ```bash
+    ./output/ifm_gui.exe
+    ```
 
 ---
 
