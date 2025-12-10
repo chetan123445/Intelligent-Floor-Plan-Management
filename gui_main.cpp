@@ -31,12 +31,12 @@ void DrawCenteredText(const char* text, int y, int fontSize, Color color) {
 
 int main() {
     // Initialization
-    //--------------------------------------------------------------------------------------
     const int screenWidth = 1280;
     const int screenHeight = 720;
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE); // Allow window to be resizable
     InitWindow(screenWidth, screenHeight, "Intelligent Floor Plan Management");
+
     SetTargetFPS(60);
 
     // Application State
@@ -136,6 +136,9 @@ int main() {
     char filterCapacity[10] = "";
     bool filterCapacityEditMode = false;
     // Random offline simulation state
+    Vector2 floorPlanScroll = { 0, 0 };
+
+    // Random offline simulation state
     std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
     std::uniform_real_distribution<float> onlineDurationDist(20.0f, 40.0f);   // Stay online for 20-40 seconds
     std::uniform_real_distribution<float> offlineDurationDist(8.0f, 20.0f);    // Stay offline for 8-20 seconds
@@ -178,6 +181,9 @@ int main() {
         BeginDrawing();
         ClearBackground(RAYWHITE);
 
+        float screenWidth = (float)GetScreenWidth();
+        float screenHeight = (float)GetScreenHeight();
+
         switch (currentState) {
             case AppState::LOGIN:
             {
@@ -189,10 +195,8 @@ int main() {
                 const float spacing = 15;
 
                 // Calculate centered positions dynamically
-                float currentScreenWidth = (float)GetScreenWidth();
-                float currentScreenHeight = (float)GetScreenHeight();
-                float startX = (currentScreenWidth - boxWidth) / 2;
-                float startY = currentScreenHeight / 2 - (boxHeight * 2 + buttonHeight) / 2 - 40;
+                float startX = (screenWidth - boxWidth) / 2;
+                float startY = screenHeight / 2 - (boxHeight * 2 + buttonHeight) / 2 - 40;
 
                 DrawCenteredText("Intelligent Floor Plan Management", startY - 80, 50, DARKGRAY);
 
@@ -250,7 +254,7 @@ int main() {
             {
                 // Display Online/Offline Status
                 statusMessage = offlineManager.isOffline() ? "Status: OFFLINE" : "Status: ONLINE";
-                DrawText(statusMessage.c_str(), GetScreenWidth() - 250, 55, 18, offlineManager.isOffline() ? RED : GREEN);
+                DrawText(statusMessage.c_str(), screenWidth - 250, 55, 18, offlineManager.isOffline() ? RED : GREEN);
 
 
                 // Common Dashboard UI
@@ -275,12 +279,12 @@ int main() {
                 }
 
                 // Toggle Fullscreen Button
-                if (GuiButton(Rectangle{ (float)screenWidth - 250, 20, 120, 30 }, "Toggle Fullscreen")) {
+                if (GuiButton(Rectangle{ screenWidth - 250, 20, 120, 30 }, "Toggle Fullscreen")) {
                     ToggleFullscreen();
                 }
 
                 // Toggle Online/Offline Button
-                if (GuiButton(Rectangle{ (float)screenWidth - 400, 20, 140, 30 }, offlineManager.isOffline() ? "Go Online" : "Go Offline")) {
+                if (GuiButton(Rectangle{ screenWidth - 400, 20, 140, 30 }, offlineManager.isOffline() ? "Go Online" : "Go Offline")) {
                     if (offlineManager.isOffline()) {
                         offlineManager.goOnline();
                     } else {
@@ -289,7 +293,7 @@ int main() {
                 }
 
                 // --- Sidebar for actions ---
-                int sidebarWidth = 250;
+                float sidebarWidth = screenWidth * 0.2f; // Sidebar is 20% of screen width
                 DrawRectangle(0, 70, sidebarWidth, screenHeight - 70, LIGHTGRAY);
                 DrawLine(sidebarWidth, 70, sidebarWidth, screenHeight, DARKGRAY);
 
@@ -297,14 +301,14 @@ int main() {
                 if (currentState == AppState::ADMIN_DASHBOARD) {
                     DrawCenteredText("Admin Menu", buttonY, 20, DARKGRAY);
                     buttonY += 40;
-                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "Add Room")) {
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, sidebarWidth - 40, 30 }, "Add Room")) {
                         showAddRoomPopup = true;
                         // Reset fields
                         memset(roomName, 0, 64);
                         memset(roomCapacity, 0, 10);
                     }
                     buttonY += 40;
-                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "Modify Room")) {
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, sidebarWidth - 40, 30 }, "Modify Room")) {
                         showModifyRoomPopup = true;
                         memset(modifyRoomName, 0, 64);
                         memset(modifyRoomCapacity, 0, 10);
@@ -312,26 +316,26 @@ int main() {
                         modifyRoomMessage = "";
                     }
                     buttonY += 40;
-                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "Delete Room")) {
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, sidebarWidth - 40, 30 }, "Delete Room")) {
                         showDeleteRoomPopup = true;
                         memset(deleteRoomName, 0, 64);
                     }
                     // Add other admin buttons here: Modify Room, Add Admin etc.
                     buttonY += 40;
-                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "Add Admin")) {
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, sidebarWidth - 40, 30 }, "Add Admin")) {
                         showAddAdminPopup = true;
                         memset(newAdminUsername, 0, 64);
                         memset(newAdminPassword, 0, 64);
                         addAdminMessage = "";
                     }
                     buttonY += 40;
-                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "Delete User/Admin")) {
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, sidebarWidth - 40, 30 }, "Delete User/Admin")) {
                         showDeleteUserAdminPopup = true;
                         memset(deleteTargetUsername, 0, 64);
                         deleteUserAdminMessage = "";
                     }
                     buttonY += 40;
-                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "Edit User/Admin")) {
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, sidebarWidth - 40, 30 }, "Edit User/Admin")) {
                         showEditUserAdminPopup = true;
                         memset(editTargetUsername, 0, 64);
                         memset(editNewPassword, 0, 64);
@@ -339,13 +343,13 @@ int main() {
                         editUserAdminMessage = "";
                     }
                     buttonY += 40;
-                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "View Users/Admins")) {
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, sidebarWidth - 40, 30 }, "View Users/Admins")) {
                         showViewUsersAdminsPopup = true;
                         usersAdminsDisplayList.clear(); // Clear previous list
                         // Populate list when popup opens
                     }
                     buttonY += 40;
-                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "View Room History")) {
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, sidebarWidth - 40, 30 }, "View Room History")) {
                         showRoomHistoryPopup = true;
                         roomHistoryDisplayList.clear();
                     }
@@ -353,40 +357,40 @@ int main() {
                 } else { // User Menu
                     DrawCenteredText("User Menu", buttonY, 20, DARKGRAY);
                     buttonY += 40;
-                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "Book a Room")) {
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, sidebarWidth - 40, 30 }, "Book a Room")) {
                         showBookRoomPopup = true;
                         bookingMessage = ""; // Clear previous messages
                         memset(bookCapacity, 0, 10); // Clear capacity input
                         memset(bookRoomName, 0, 64); // Clear room name input
                     }
                     buttonY += 40;
-                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "Release a Room")) {
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, sidebarWidth - 40, 30 }, "Release a Room")) {
                         showReleaseRoomPopup = true;
                         releaseRoomMessage = "";
                         memset(releaseRoomName, 0, 64);
                     }
                     buttonY += 40;
-                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "View Booking History")) {
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, sidebarWidth - 40, 30 }, "View Booking History")) {
                         showBookingHistoryPopup = true;
                     }
 
                 }
 
                 buttonY += 60; // Gap
-                if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "View Offline Queue")) {
+                if (GuiButton(Rectangle{ 20, (float)buttonY, sidebarWidth - 40, 30 }, "View Offline Queue")) {
                     showOfflineQueuePopup = true;
                 }
 
                 // Common button for admins and users
                 if (currentState == AppState::ADMIN_DASHBOARD) {
                     buttonY += 40;
-                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "View Booking History")) {
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, sidebarWidth - 40, 30 }, "View Booking History")) {
                         showBookingHistoryPopup = true;
                     }
                 }
                 // --- Main content area for rooms and filters ---
-                int contentAreaX = sidebarWidth + 20;
-                int contentAreaY = 80;
+                float contentAreaX = sidebarWidth + 20;
+                float contentAreaY = 80;
 
                 DrawText("Floor Plan", contentAreaX, contentAreaY, 30, GRAY);
                 contentAreaY += 50; // Move down for filter controls
@@ -454,37 +458,53 @@ int main() {
                     }
                 }
 
-                int roomBoxWidth = 180; // Increased width for more text space
-                int roomBoxHeight = 100;
-                int padding = 20;
-                int roomsPerRow = (screenWidth - sidebarWidth - padding - contentAreaX) / (roomBoxWidth + padding); // Adjust for new UI elements
-                
-                for (size_t i = 0; i < displayedRooms.size(); ++i) {
-                    int row = i / roomsPerRow;
-                    int col = i % roomsPerRow;
+                // --- Scrollable Floor Plan ---
+                Rectangle floorPlanView = { contentAreaX, contentAreaY, screenWidth - contentAreaX - 20, screenHeight - contentAreaY - 20 };
+                DrawRectangleLinesEx(floorPlanView, 1, Fade(DARKGRAY, 0.5f));
 
-                    int x = contentAreaX + col * (roomBoxWidth + padding);
-                    int y = contentAreaY + row * (roomBoxHeight + padding); // Start drawing rooms below filters
+                float roomBoxWidth = 180;
+                float roomBoxHeight = 100;
+                float padding = 20;
+                int roomsPerRow = (floorPlanView.width > 0) ? (int)(floorPlanView.width / (roomBoxWidth + padding)) : 1;
+                if (roomsPerRow == 0) roomsPerRow = 1;
 
-                    Color roomColor = displayedRooms[i].isAvailable() ? Color{18, 160, 14, 255} : Color{190, 30, 45, 255}; // Using slightly darker LIME and MAROON
-                    DrawRectangle(x, y, roomBoxWidth, roomBoxHeight, roomColor);
-                    DrawRectangleLines(x, y, roomBoxWidth, roomBoxHeight, DARKBROWN);
+                int numRows = (displayedRooms.size() + roomsPerRow - 1) / roomsPerRow;
+                Rectangle floorPlanContent = { 0, 0, floorPlanView.width, (float)numRows * (roomBoxHeight + padding) };
 
-                    DrawText(displayedRooms[i].getName().c_str(), x + 10, y + 10, 20, WHITE);
-                    std::string capacityStr = "Capacity: " + std::to_string(displayedRooms[i].getCapacity());
-                    DrawText(capacityStr.c_str(), x + 10, y + 35, 15, WHITE);
+                Rectangle viewScroll = { 0 };
+                GuiScrollPanel(floorPlanView, NULL, floorPlanContent, &floorPlanScroll, &viewScroll);
 
-                    if (!displayedRooms[i].isAvailable()) {
-                        std::string bookedByStr = "Booked: " + displayedRooms[i].getBookedBy();
-                        DrawText(bookedByStr.c_str(), x + 10, y + 60, 15, YELLOW);
-                    } else {
-                        DrawText("Available", x + 10, y + 60, 15, WHITE);
+                BeginScissorMode(viewScroll.x, viewScroll.y, viewScroll.width, viewScroll.height);
+                {
+                    for (size_t i = 0; i < displayedRooms.size(); ++i) {
+                        int row = i / roomsPerRow;
+                        int col = i % roomsPerRow;
+
+                        float x = floorPlanView.x + col * (roomBoxWidth + padding) + floorPlanScroll.x;
+                        float y = floorPlanView.y + row * (roomBoxHeight + padding) + floorPlanScroll.y;
+
+                        Color roomColor = displayedRooms[i].isAvailable() ? Color{18, 160, 14, 255} : Color{190, 30, 45, 255};
+                        DrawRectangle(x, y, roomBoxWidth, roomBoxHeight, roomColor);
+                        DrawRectangleLines(x, y, roomBoxWidth, roomBoxHeight, DARKBROWN);
+
+                        DrawText(displayedRooms[i].getName().c_str(), x + 10, y + 10, 20, WHITE);
+                        std::string capacityStr = "Capacity: " + std::to_string(displayedRooms[i].getCapacity());
+                        DrawText(capacityStr.c_str(), x + 10, y + 35, 15, WHITE);
+
+                        if (!displayedRooms[i].isAvailable()) {
+                            std::string bookedByStr = "Booked: " + displayedRooms[i].getBookedBy();
+                            DrawText(bookedByStr.c_str(), x + 10, y + 60, 15, YELLOW);
+                        } else {
+                            DrawText("Available", x + 10, y + 60, 15, WHITE);
+                        }
                     }
                 }
-                 if (displayedRooms.empty() && !roomManager.getRooms().empty()) {
-                    DrawText("No rooms match your search/filters.", contentAreaX, contentAreaY + 50, 20, GRAY);
+                EndScissorMode();
+
+                if (displayedRooms.empty() && !roomManager.getRooms().empty()) {
+                    DrawText("No rooms match your search/filters.", contentAreaX + 20, contentAreaY + 20, 20, GRAY);
                 } else if (roomManager.getRooms().empty()) {
-                    DrawText("No rooms created yet. Admin needs to add rooms.", sidebarWidth + 20, 350, 40, GRAY);
+                    DrawText("No rooms created yet. Admin needs to add rooms.", contentAreaX + 20, contentAreaY + 20, 20, GRAY);
                 }
 
             }
@@ -493,8 +513,8 @@ int main() {
 
         // --- Popups ---
         if (showAddRoomPopup) {
-            int popupWidth = 400;
-            int popupHeight = 250;
+            float popupWidth = screenWidth * 0.3f;
+            float popupHeight = screenHeight * 0.4f;
             Rectangle popupRect = { (float)screenWidth/2 - popupWidth/2, (float)screenHeight/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
             
             showAddRoomPopup = !GuiWindowBox(popupRect, "Add New Room");
@@ -527,8 +547,8 @@ int main() {
         }
 
         if (showBookRoomPopup) {
-            int popupWidth = 400;
-            int popupHeight = 220;
+            float popupWidth = screenWidth * 0.3f;
+            float popupHeight = screenHeight * 0.35f;
             Rectangle popupRect = { (float)screenWidth/2 - popupWidth/2, (float)screenHeight/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
             
             showBookRoomPopup = !GuiWindowBox(popupRect, "Book a Room");
@@ -572,8 +592,8 @@ int main() {
         }
 
         if (showReleaseRoomPopup) {
-            int popupWidth = 400;
-            int popupHeight = 220;
+            float popupWidth = screenWidth * 0.3f;
+            float popupHeight = screenHeight * 0.3f;
             Rectangle popupRect = { (float)screenWidth/2 - popupWidth/2, (float)screenHeight/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
             
             showReleaseRoomPopup = !GuiWindowBox(popupRect, "Release a Room");
@@ -609,8 +629,8 @@ int main() {
             }
         }
         if (showReleaseStatusPopup) {
-            int popupWidth = 450;
-            int popupHeight = 150;
+            float popupWidth = screenWidth * 0.35f;
+            float popupHeight = screenHeight * 0.25f;
             Rectangle popupRect = { (float)screenWidth/2 - popupWidth/2, (float)screenHeight/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
             if (GuiMessageBox(popupRect, "Release Status", releaseRoomMessage.c_str(), "OK") == 1) {
                 showReleaseStatusPopup = false;
@@ -619,8 +639,8 @@ int main() {
         }
 
         if (showModifyRoomPopup) {
-            int popupWidth = 450;
-            int popupHeight = 350;
+            float popupWidth = screenWidth * 0.35f;
+            float popupHeight = screenHeight * 0.5f;
             Rectangle popupRect = { (float)screenWidth/2 - popupWidth/2, (float)screenHeight/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
             
             showModifyRoomPopup = !GuiWindowBox(popupRect, "Modify Room Details");
@@ -673,8 +693,8 @@ int main() {
         }
 
         if (showDeleteRoomPopup) {
-            int popupWidth = 400;
-            int popupHeight = 250;
+            float popupWidth = screenWidth * 0.3f;
+            float popupHeight = screenHeight * 0.4f;
             Rectangle popupRect = { (float)screenWidth/2 - popupWidth/2, (float)screenHeight/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
             
             showDeleteRoomPopup = !GuiWindowBox(popupRect, "Delete Room");
@@ -715,8 +735,8 @@ int main() {
         }
 
         if (showAddAdminPopup) {
-            int popupWidth = 400;
-            int popupHeight = 300;
+            float popupWidth = screenWidth * 0.3f;
+            float popupHeight = screenHeight * 0.45f;
             Rectangle popupRect = { (float)screenWidth/2 - popupWidth/2, (float)screenHeight/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
             
             showAddAdminPopup = !GuiWindowBox(popupRect, "Add New Admin");
@@ -751,8 +771,8 @@ int main() {
         }
 
         if (showDeleteUserAdminPopup) {
-            int popupWidth = 400;
-            int popupHeight = 250;
+            float popupWidth = screenWidth * 0.3f;
+            float popupHeight = screenHeight * 0.4f;
             Rectangle popupRect = { (float)screenWidth/2 - popupWidth/2, (float)screenHeight/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
             
             showDeleteUserAdminPopup = !GuiWindowBox(popupRect, "Delete User/Admin");
@@ -782,8 +802,8 @@ int main() {
         }
 
         if (showEditUserAdminPopup) {
-            int popupWidth = 450;
-            int popupHeight = 350;
+            float popupWidth = screenWidth * 0.35f;
+            float popupHeight = screenHeight * 0.5f;
             Rectangle popupRect = { (float)screenWidth/2 - popupWidth/2, (float)screenHeight/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
             
             showEditUserAdminPopup = !GuiWindowBox(popupRect, "Edit User/Admin Details");
@@ -844,28 +864,37 @@ int main() {
         }
 
         if (showViewUsersAdminsPopup) {
-            int popupWidth = 500;
-            int popupHeight = 400;
+            float popupWidth = screenWidth * 0.4f;
+            float popupHeight = screenHeight * 0.6f;
             Rectangle popupRect = { (float)screenWidth/2 - popupWidth/2, (float)screenHeight/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
             
             showViewUsersAdminsPopup = !GuiWindowBox(popupRect, "Users and Admins");
 
+            float maxTextWidth = 0;
             if (usersAdminsDisplayList.empty()) { // Populate list only once when opened
                 std::vector<std::pair<std::string, Authentication::Role>> users = auth.getUsersAndAdmins();
                 for (const auto& userPair : users) {
-                    usersAdminsDisplayList.push_back(userPair.first + " (" + (userPair.second == Authentication::Role::ADMIN ? "Admin" : "User") + ")");
+                    std::string line = userPair.first + " (" + (userPair.second == Authentication::Role::ADMIN ? "Admin" : "User") + ")";
+                    usersAdminsDisplayList.push_back(line);
+                    float currentWidth = MeasureText(line.c_str(), 15);
+                    if (currentWidth > maxTextWidth) {
+                        maxTextWidth = currentWidth;
+                    }
                 }
             }
 
-            Rectangle view = { popupRect.x + 10, popupRect.y + 40, popupRect.width - 20, popupRect.height - 50 };
-            Rectangle content = { view.x, view.y, view.width - 20, (float)usersAdminsDisplayList.size() * 25 };
+            Rectangle view = { popupRect.x + 10, popupRect.y + 40, popupRect.width - 20, popupRect.height - 60 };
+            float contentWidth = (maxTextWidth > view.width) ? maxTextWidth + 20 : view.width;
+            Rectangle content = { 0, 0, contentWidth, (float)usersAdminsDisplayList.size() * 25 };
+
             Rectangle viewScroll = { 0 };
-            
             GuiScrollPanel(view, NULL, content, &usersAdminsScroll, &viewScroll);
 
-            BeginScissorMode(view.x, view.y, view.width, view.height);
-            for(size_t i = 0; i < usersAdminsDisplayList.size(); ++i) {
-                DrawText(usersAdminsDisplayList[i].c_str(), view.x + 10 + usersAdminsScroll.x, view.y + 10 + i * 25 + usersAdminsScroll.y, 15, DARKGRAY);
+            BeginScissorMode(viewScroll.x, viewScroll.y, viewScroll.width, viewScroll.height);
+            {
+                for(size_t i = 0; i < usersAdminsDisplayList.size(); ++i) {
+                    DrawText(usersAdminsDisplayList[i].c_str(), view.x + 10 + usersAdminsScroll.x, view.y + 10 + i * 25 + usersAdminsScroll.y, 15, DARKGRAY);
+                }
             }
             EndScissorMode();
         }
@@ -882,27 +911,38 @@ int main() {
             if (queue.empty()) {
                 DrawText("Offline queue is empty.", popupRect.x + 20, popupRect.y + 50, 20, GRAY);
             } else {
-                Rectangle view = { popupRect.x + 10, popupRect.y + 40, popupRect.width - 20, popupRect.height - 50 };
-                Rectangle content = { view.x, view.y, view.width - 20, (float)queue.size() * 25 };
+                float maxTextWidth = 0;
+                for(const auto& line : queue) {
+                    float currentWidth = MeasureText(line.c_str(), 15);
+                    if (currentWidth > maxTextWidth) maxTextWidth = currentWidth;
+                }
+
+                Rectangle view = { popupRect.x + 10, popupRect.y + 40, popupRect.width - 20, popupRect.height - 60 };
+                float contentWidth = (maxTextWidth > view.width) ? maxTextWidth + 20 : view.width;
+                Rectangle content = { 0, 0, contentWidth, (float)queue.size() * 25 };
                 Rectangle viewScroll = { 0 };
                 
                 GuiScrollPanel(view, NULL, content, &scroll, &viewScroll);
 
-                BeginScissorMode(view.x, view.y, view.width, view.height);
-                for(size_t i = 0; i < queue.size(); ++i) {
-                    DrawText(queue[i].c_str(), view.x + 10 + scroll.x, view.y + 10 + i * 25 + scroll.y, 15, DARKGRAY);
+                BeginScissorMode(viewScroll.x, viewScroll.y, viewScroll.width, viewScroll.height);
+                {
+                    for(size_t i = 0; i < queue.size(); ++i) {
+                        DrawText(queue[i].c_str(), view.x + 10 + scroll.x, view.y + 10 + i * 25 + scroll.y, 15, DARKGRAY);
+                    }
                 }
                 EndScissorMode();
             }
         }
 
         if (showRoomHistoryPopup) {
-            int popupWidth = 700;
-            int popupHeight = 500;
+            float popupWidth = screenWidth * 0.5f;
+            float popupHeight = screenHeight * 0.7f;
             Rectangle popupRect = { (float)GetScreenWidth()/2 - popupWidth/2, (float)GetScreenHeight()/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
             
             showRoomHistoryPopup = !GuiWindowBox(popupRect, "Room Modification History");
 
+            float maxTextWidth = 0;
+            // Recalculate history list and max width if it's empty
             if (roomHistoryDisplayList.empty()) {
                 auto history = roomHistoryManager.getAllHistory();
                 for (const auto& entry : history) {
@@ -918,27 +958,36 @@ int main() {
                 }
             }
 
-            Rectangle view = { popupRect.x + 10, popupRect.y + 40, popupRect.width - 20, popupRect.height - 50 };
-            Rectangle content = { view.x, view.y, view.width - 20, (float)roomHistoryDisplayList.size() * 25 };
+            // Always calculate max width from the existing list to ensure scrolling works
+            for (const auto& line : roomHistoryDisplayList) {
+                maxTextWidth = fmaxf(maxTextWidth, MeasureText(line.c_str(), 15));
+            }
+
+            Rectangle view = { popupRect.x + 10, popupRect.y + 40, popupRect.width - 20, popupRect.height - 60 };
+            float contentWidth = (maxTextWidth > view.width) ? maxTextWidth + 20 : view.width;
+            Rectangle content = { 0, 0, contentWidth, (float)roomHistoryDisplayList.size() * 25 };
             Rectangle viewScroll = { 0 };
             
             GuiScrollPanel(view, NULL, content, &roomHistoryScroll, &viewScroll);
 
-            BeginScissorMode(view.x, view.y, view.width, view.height);
-            for(size_t i = 0; i < roomHistoryDisplayList.size(); ++i) {
-                DrawText(roomHistoryDisplayList[i].c_str(), view.x + 10 + roomHistoryScroll.x, view.y + 10 + i * 25 + roomHistoryScroll.y, 15, DARKGRAY);
+            BeginScissorMode(viewScroll.x, viewScroll.y, viewScroll.width, viewScroll.height);
+            {
+                for(size_t i = 0; i < roomHistoryDisplayList.size(); ++i) {
+                    DrawText(roomHistoryDisplayList[i].c_str(), view.x + 10 + roomHistoryScroll.x, view.y + 10 + i * 25 + roomHistoryScroll.y, 15, DARKGRAY);
+                }
             }
             EndScissorMode();
         }
 
         if (showBookingHistoryPopup) {
-            int popupWidth = 600;
-            int popupHeight = 400;
+            float popupWidth = screenWidth * 0.45f;
+            float popupHeight = screenHeight * 0.6f;
             Rectangle popupRect = { (float)GetScreenWidth()/2 - popupWidth/2, (float)GetScreenHeight()/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
             
             showBookingHistoryPopup = !GuiWindowBox(popupRect, "Booking History");
 
             std::vector<std::string> bookingHistoryDisplayList;
+            float maxTextWidth = 0;
             auto history = bookingHistoryManager.getAllHistory();
             for (const auto& entry : history) {
                 if (currentState == AppState::USER_DASHBOARD && entry.username != loggedInUser) {
@@ -949,16 +998,21 @@ int main() {
                 timeinfo = localtime(&entry.timestamp);
                 strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", timeinfo);
                 std::string line = std::string(buffer) + " | Room: " + entry.roomName + " | User: " + entry.username + " | Action: " + entry.action;
+                float currentWidth = MeasureText(line.c_str(), 15);
+                if (currentWidth > maxTextWidth) maxTextWidth = currentWidth;
                 bookingHistoryDisplayList.push_back(line);
             }
 
-            Rectangle view = { popupRect.x + 10, popupRect.y + 40, popupRect.width - 20, popupRect.height - 50 };
-            Rectangle content = { view.x, view.y, view.width - 20, (float)bookingHistoryDisplayList.size() * 25 };
+            Rectangle view = { popupRect.x + 10, popupRect.y + 40, popupRect.width - 20, popupRect.height - 60 };
+            float contentWidth = (maxTextWidth > view.width) ? maxTextWidth + 20 : view.width;
+            Rectangle content = { 0, 0, contentWidth, (float)bookingHistoryDisplayList.size() * 25 };
             Rectangle viewScroll = { 0 };
             GuiScrollPanel(view, NULL, content, &bookingHistoryScroll, &viewScroll);
-            BeginScissorMode(view.x, view.y, view.width, view.height);
-            for(size_t i = 0; i < bookingHistoryDisplayList.size(); ++i) {
-                DrawText(bookingHistoryDisplayList[i].c_str(), view.x + 10 + bookingHistoryScroll.x, view.y + 10 + i * 25 + bookingHistoryScroll.y, 15, DARKGRAY);
+            BeginScissorMode(viewScroll.x, viewScroll.y, viewScroll.width, viewScroll.height);
+            {
+                for(size_t i = 0; i < bookingHistoryDisplayList.size(); ++i) {
+                    DrawText(bookingHistoryDisplayList[i].c_str(), view.x + 10 + bookingHistoryScroll.x, view.y + 10 + i * 25 + bookingHistoryScroll.y, 15, DARKGRAY);
+                }
             }
             EndScissorMode();
         }
