@@ -9,6 +9,7 @@
 #include <fstream>
 
 #include <algorithm>
+#include <climits>
 
 
 
@@ -176,12 +177,18 @@ Room* RoomBookingSystem::bookRoom(const std::string& username, int participants,
     if (!roomName.empty()) {
         roomToBook = rm.findRoom(roomName);
     } else {
+        int minCapacityDiff = INT_MAX;
+        Room* bestFitRoom = nullptr;
         for (auto& room : rm.getRooms()) {
             if (room.isAvailable() && room.getCapacity() >= participants) {
-                roomToBook = &room;
-                break; // Find the first suitable room
+                int diff = room.getCapacity() - participants;
+                if (diff < minCapacityDiff) {
+                    minCapacityDiff = diff;
+                    bestFitRoom = &room;
+                }
             }
         }
+        roomToBook = bestFitRoom;
     }
 
     if (roomToBook && roomToBook->isAvailable() && roomToBook->getCapacity() >= participants) {

@@ -6,6 +6,9 @@ https://drive.google.com/drive/u/0/folders/1AojUALUEAeI08RRcIJnD3uTrKkH5M2ro?ths
 
 ---
 
+## Default Admin: 
+        You can login as a default admin with username: Admin and password : 123
+
 ## ✨ Features
 
 - **Interactive GUI**: A clean graphical user interface built with Raylib to visualize the floor plan and interact with meeting rooms.

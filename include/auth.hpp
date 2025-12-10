@@ -24,8 +24,8 @@ public:
 
 private:
     std::unordered_map<std::string, std::pair<std::size_t, Role>> users;
-    const std::string HASHED_USERS_FILE = "hashed_users.txt";
-    const std::string HASHED_ADMINS_FILE = "hashed_admins.txt";
+    const std::string HASHED_USERS_FILE = "output/hashed_users.txt";
+    const std::string HASHED_ADMINS_FILE = "output/hashed_admins.txt";
 
     std::size_t hash_password(const std::string& password);
     void load_users();

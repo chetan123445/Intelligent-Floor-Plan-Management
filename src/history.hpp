@@ -5,8 +5,8 @@
 #include <vector>
 #include <ctime>
 
-const std::string ROOM_HISTORY_FILE = "room_history.log";
-const std::string BOOKING_HISTORY_FILE = "booking_history.log";
+const std::string ROOM_HISTORY_FILE = "output/room_history.log";
+const std::string BOOKING_HISTORY_FILE = "output/booking_history.log";
 
 struct RoomHistoryEntry {
     time_t timestamp;

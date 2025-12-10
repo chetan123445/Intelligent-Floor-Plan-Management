@@ -2,3 +2,5 @@ hashed_users.txt
 hashed_admins.txt
 offline_changes.txt
 rooms.txt
+booking_history.log
+room_history.log

@@ -49,7 +49,7 @@ public:
 
 private:
     std::vector<Room> rooms;
-    const std::string ROOMS_FILE = "rooms.txt";
+    const std::string ROOMS_FILE = "output/rooms.txt";
     RoomHistoryManager* historyManager;
 };
 

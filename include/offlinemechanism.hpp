@@ -25,8 +25,7 @@ public:
 
 private:
     bool offline;
-    const std::string OFFLINE_CHANGES_FILE = "offline_changes.txt";
-    const std::string OFFLINE_USERS_FILE = "offline_users.txt"; // For user/admin management
+    const std::string OFFLINE_CHANGES_FILE = "output/offline_changes.txt";
 
 
     Authentication& auth;

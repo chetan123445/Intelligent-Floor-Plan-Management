@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "c:/Users/CHETAN DUDI/OneDrive/Desktop/intelligentFloorPlan/Intelligent-Floor-Plan-Management",
-      "program": "c:/Users/CHETAN DUDI/OneDrive/Desktop/intelligentFloorPlan/Intelligent-Floor-Plan-Management/build/Debug/outDebug",
+      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/output/ifm_gui.exe",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

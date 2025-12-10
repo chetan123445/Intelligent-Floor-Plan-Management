@@ -36,8 +36,8 @@ void Authentication::load_users() {
     }
 
     // Ensure super admin is always present
-    if (users.find("Chetan") == users.end()) {
-        users["Chetan"] = {hash_password("123"), Role::ADMIN};
+    if (users.find("Admin") == users.end()) {
+        users["Admin"] = {hash_password("123"), Role::ADMIN};
         save_users();
     }
 }
