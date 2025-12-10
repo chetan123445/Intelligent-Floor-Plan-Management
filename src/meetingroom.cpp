@@ -1,5 +1,6 @@
 
 #include "meetingroom.hpp"
+#include "history.hpp"
 
 #include "ui.hpp"
 
@@ -13,11 +14,9 @@
 
 // RoomBookingSystem class implementation
 
-RoomBookingSystem::RoomBookingSystem(RoomManager& rm)
-
-    : rm(rm) {}
-
-
+RoomBookingSystem::RoomBookingSystem(RoomManager& rm) : rm(rm) {
+    bookingHistoryManager = new BookingHistoryManager();
+}
 
 void RoomBookingSystem::suggestRoom(int participants) {
 
@@ -188,6 +187,7 @@ Room* RoomBookingSystem::bookRoom(const std::string& username, int participants,
     if (roomToBook && roomToBook->isAvailable() && roomToBook->getCapacity() >= participants) {
         roomToBook->setAvailable(false);
         roomToBook->setBookedBy(username);
+        bookingHistoryManager->logBooking(roomToBook->getName(), username);
         rm.saveRooms();
         return roomToBook;
     }
@@ -235,6 +235,7 @@ ReleaseRoomStatus RoomBookingSystem::releaseRoom(const std::string& username, co
         if (!room->isAvailable() && room->getBookedBy() == username) {
             room->setAvailable(true);
             room->setBookedBy(""); // Clear bookedBy
+            bookingHistoryManager->logRelease(roomName, username);
             rm.saveRooms();
             if (!isGui) {
                 UI::displayMessage("Room released");

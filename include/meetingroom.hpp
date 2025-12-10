@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+class BookingHistoryManager;
+
 enum class ReleaseRoomStatus {
     SUCCESS,
     NOT_FOUND,
@@ -24,6 +26,7 @@ public:
 private:
     RoomManager& rm;
     void suggestRoom(int participants);
+    BookingHistoryManager* bookingHistoryManager;
 };
 
 #endif // MEETINGROOM_HPP

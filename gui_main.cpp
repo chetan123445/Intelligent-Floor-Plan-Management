@@ -3,6 +3,7 @@
 #include "room.hpp"
 #include "meetingroom.hpp"
 #include "offlinemechanism.hpp"
+#include "history.hpp"
 #include <random>   // For random number generation
 #include <algorithm> // For std::transform
 #include <chrono>   // For seeding the random number generator
@@ -44,6 +45,8 @@ int main() {
     RoomManager roomManager;
     RoomBookingSystem bookingSystem(roomManager);
     OfflineManager offlineManager(auth, roomManager, bookingSystem);
+    RoomHistoryManager roomHistoryManager;
+    BookingHistoryManager bookingHistoryManager;
 
     // Login Screen state
     char username[64] = "";
@@ -113,6 +116,13 @@ int main() {
     bool showOfflineQueuePopup = false;
 
     // Room deletion state
+    bool showRoomHistoryPopup = false;
+    Vector2 roomHistoryScroll = { 0, 0 };
+    std::vector<std::string> roomHistoryDisplayList;
+
+    // Booking history state
+    bool showBookingHistoryPopup = false;
+    Vector2 bookingHistoryScroll = { 0, 0 };
     bool showDeleteRoomPopup = false;
     char deleteRoomName[64] = "";
     bool deleteRoomNameEditMode = false;
@@ -260,6 +270,7 @@ int main() {
                     showBookRoomPopup = false;
                     showOfflineQueuePopup = false;
                     showReleaseStatusPopup = false;
+                    showRoomHistoryPopup = false;
                     continue; // Skip rest of the frame
                 }
 
@@ -333,6 +344,11 @@ int main() {
                         usersAdminsDisplayList.clear(); // Clear previous list
                         // Populate list when popup opens
                     }
+                    buttonY += 40;
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "View Room History")) {
+                        showRoomHistoryPopup = true;
+                        roomHistoryDisplayList.clear();
+                    }
 
                 } else { // User Menu
                     DrawCenteredText("User Menu", buttonY, 20, DARKGRAY);
@@ -349,6 +365,11 @@ int main() {
                         releaseRoomMessage = "";
                         memset(releaseRoomName, 0, 64);
                     }
+                    buttonY += 40;
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "View Booking History")) {
+                        showBookingHistoryPopup = true;
+                    }
+
                 }
 
                 buttonY += 60; // Gap
@@ -356,6 +377,13 @@ int main() {
                     showOfflineQueuePopup = true;
                 }
 
+                // Common button for admins and users
+                if (currentState == AppState::ADMIN_DASHBOARD) {
+                    buttonY += 40;
+                    if (GuiButton(Rectangle{ 20, (float)buttonY, (float)sidebarWidth - 40, 30 }, "View Booking History")) {
+                        showBookingHistoryPopup = true;
+                    }
+                }
                 // --- Main content area for rooms and filters ---
                 int contentAreaX = sidebarWidth + 20;
                 int contentAreaY = 80;
@@ -443,11 +471,11 @@ int main() {
                     DrawRectangleLines(x, y, roomBoxWidth, roomBoxHeight, DARKBROWN);
 
                     DrawText(displayedRooms[i].getName().c_str(), x + 10, y + 10, 20, WHITE);
-                    std::string capacityStr = "Cap: " + std::to_string(displayedRooms[i].getCapacity());
+                    std::string capacityStr = "Capacity: " + std::to_string(displayedRooms[i].getCapacity());
                     DrawText(capacityStr.c_str(), x + 10, y + 35, 15, WHITE);
 
                     if (!displayedRooms[i].isAvailable()) {
-                        std::string bookedByStr = "By: " + displayedRooms[i].getBookedBy();
+                        std::string bookedByStr = "Booked: " + displayedRooms[i].getBookedBy();
                         DrawText(bookedByStr.c_str(), x + 10, y + 60, 15, YELLOW);
                     } else {
                         DrawText("Available", x + 10, y + 60, 15, WHITE);
@@ -456,7 +484,7 @@ int main() {
                  if (displayedRooms.empty() && !roomManager.getRooms().empty()) {
                     DrawText("No rooms match your search/filters.", contentAreaX, contentAreaY + 50, 20, GRAY);
                 } else if (roomManager.getRooms().empty()) {
-                    DrawText("No rooms created yet. Admin needs to add rooms.", sidebarWidth + 20, 150, 20, GRAY);
+                    DrawText("No rooms created yet. Admin needs to add rooms.", sidebarWidth + 20, 350, 40, GRAY);
                 }
 
             }
@@ -665,11 +693,11 @@ int main() {
                         // For now, we'll just prevent deletion if booked
                         DrawText("Cannot delete booked room!", popupRect.x + 20, popupRect.y + 200, 20, RED);
                     } else {
-                        if (offlineManager.isOffline()) {
-                            offlineManager.queueDeleteRoom(deleteRoomName);
+                        if (offlineManager.isOffline()) {                            
+                            offlineManager.queueDeleteRoom(deleteRoomName, loggedInUser);
                             DrawText("Deletion queued.", popupRect.x + 20, popupRect.y + 200, 20, LIME);
                         } else {
-                            roomManager.deleteRoom(deleteRoomName);
+                            roomManager.deleteRoom(deleteRoomName, loggedInUser);
                             DrawText("Room deleted successfully.", popupRect.x + 20, popupRect.y + 200, 20, LIME);
                         }
                         showDeleteRoomPopup = false;
@@ -866,6 +894,73 @@ int main() {
                 }
                 EndScissorMode();
             }
+        }
+
+        if (showRoomHistoryPopup) {
+            int popupWidth = 700;
+            int popupHeight = 500;
+            Rectangle popupRect = { (float)GetScreenWidth()/2 - popupWidth/2, (float)GetScreenHeight()/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
+            
+            showRoomHistoryPopup = !GuiWindowBox(popupRect, "Room Modification History");
+
+            if (roomHistoryDisplayList.empty()) {
+                auto history = roomHistoryManager.getAllHistory();
+                for (const auto& entry : history) {
+                    char buffer[200];
+                    struct tm * timeinfo;
+                    timeinfo = localtime(&entry.timestamp);
+                    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", timeinfo);
+                    std::string line = std::string(buffer) + " | Room: " + entry.roomName + " | Action: " + entry.action + " | By: " + entry.adminName;
+                    if (entry.action != "DELETE") {
+                        line += " | Capacity: " + std::to_string(entry.capacity) + " | Available: " + (entry.isAvailable ? "Yes" : "No");
+                    }
+                    roomHistoryDisplayList.push_back(line);
+                }
+            }
+
+            Rectangle view = { popupRect.x + 10, popupRect.y + 40, popupRect.width - 20, popupRect.height - 50 };
+            Rectangle content = { view.x, view.y, view.width - 20, (float)roomHistoryDisplayList.size() * 25 };
+            Rectangle viewScroll = { 0 };
+            
+            GuiScrollPanel(view, NULL, content, &roomHistoryScroll, &viewScroll);
+
+            BeginScissorMode(view.x, view.y, view.width, view.height);
+            for(size_t i = 0; i < roomHistoryDisplayList.size(); ++i) {
+                DrawText(roomHistoryDisplayList[i].c_str(), view.x + 10 + roomHistoryScroll.x, view.y + 10 + i * 25 + roomHistoryScroll.y, 15, DARKGRAY);
+            }
+            EndScissorMode();
+        }
+
+        if (showBookingHistoryPopup) {
+            int popupWidth = 600;
+            int popupHeight = 400;
+            Rectangle popupRect = { (float)GetScreenWidth()/2 - popupWidth/2, (float)GetScreenHeight()/2 - popupHeight/2, (float)popupWidth, (float)popupHeight };
+            
+            showBookingHistoryPopup = !GuiWindowBox(popupRect, "Booking History");
+
+            std::vector<std::string> bookingHistoryDisplayList;
+            auto history = bookingHistoryManager.getAllHistory();
+            for (const auto& entry : history) {
+                if (currentState == AppState::USER_DASHBOARD && entry.username != loggedInUser) {
+                    continue; // Users only see their own history
+                }
+                char buffer[200];
+                struct tm * timeinfo;
+                timeinfo = localtime(&entry.timestamp);
+                strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", timeinfo);
+                std::string line = std::string(buffer) + " | Room: " + entry.roomName + " | User: " + entry.username + " | Action: " + entry.action;
+                bookingHistoryDisplayList.push_back(line);
+            }
+
+            Rectangle view = { popupRect.x + 10, popupRect.y + 40, popupRect.width - 20, popupRect.height - 50 };
+            Rectangle content = { view.x, view.y, view.width - 20, (float)bookingHistoryDisplayList.size() * 25 };
+            Rectangle viewScroll = { 0 };
+            GuiScrollPanel(view, NULL, content, &bookingHistoryScroll, &viewScroll);
+            BeginScissorMode(view.x, view.y, view.width, view.height);
+            for(size_t i = 0; i < bookingHistoryDisplayList.size(); ++i) {
+                DrawText(bookingHistoryDisplayList[i].c_str(), view.x + 10 + bookingHistoryScroll.x, view.y + 10 + i * 25 + bookingHistoryScroll.y, 15, DARKGRAY);
+            }
+            EndScissorMode();
         }
 
         EndDrawing();

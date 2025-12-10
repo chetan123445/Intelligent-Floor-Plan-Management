@@ -80,10 +80,10 @@ void OfflineManager::queueEditUser(const std::string& targetUsername, const std:
     }
 }
 
-void OfflineManager::queueDeleteRoom(const std::string& roomName) {
+void OfflineManager::queueDeleteRoom(const std::string& roomName, const std::string& adminName) {
     std::ofstream offlineFile(OFFLINE_CHANGES_FILE, std::ios::app);
     if (offlineFile.is_open()) {
-        offlineFile << "DELETE_ROOM " << roomName << std::endl;
+        offlineFile << "DELETE_ROOM " << roomName << " " << adminName << std::endl;
         offlineFile.close();
         UI::displayMessage("Offline action: Delete room '" + roomName + "' queued.");
     } else {
@@ -159,6 +159,10 @@ void OfflineManager::synchronizeChanges() {
             std::string username, roomName;
             ss >> username >> roomName;
             applyReleaseRoom(username, roomName);
+        } else if (action == "DELETE_ROOM") {
+            std::string roomName, adminName;
+            ss >> roomName >> adminName;
+            applyDeleteRoom(roomName, adminName);
         }
     }
 
@@ -185,8 +189,8 @@ void OfflineManager::applyBookRoom(const std::string& username, int participants
     rbs.bookRoom(username, participants, roomName);
 }
 
-void OfflineManager::applyDeleteRoom(const std::string& roomName) {
-    rm.deleteRoom(roomName);
+void OfflineManager::applyDeleteRoom(const std::string& roomName, const std::string& adminName) {
+    rm.deleteRoom(roomName, adminName);
 }
 
 void OfflineManager::applyDeleteUser(const std::string& targetUsername) {

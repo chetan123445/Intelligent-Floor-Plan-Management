@@ -1,7 +1,9 @@
 #include "room.hpp"
 #include "ui.hpp"
+#include "history.hpp"
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <algorithm>
 
 // Room class implementation
@@ -25,6 +27,7 @@ void Room::setBookedBy(const std::string& username) { this->bookedBy = username;
 
 // RoomManager class implementation
 RoomManager::RoomManager() {
+    historyManager = new RoomHistoryManager();
     loadRooms();
 }
 
@@ -33,16 +36,22 @@ void RoomManager::loadRooms() {
     std::ifstream file(ROOMS_FILE);
     if (file.is_open()) {
         std::string name, lastModifiedBy, capacity_str, isAvailable_str, bookedBy;
-        while (file >> name >> lastModifiedBy >> capacity_str >> isAvailable_str >> bookedBy) {
-            int capacity = std::stoi(capacity_str);
-            bool isAvailable = (isAvailable_str == "Yes");
-            Room room(name, lastModifiedBy, capacity, isAvailable);
-            if (bookedBy == "none") {
-                room.setBookedBy("");
-            } else {
-                room.setBookedBy(bookedBy);
+        std::string line;
+        while (std::getline(file, line)) {
+            std::stringstream ss(line);
+            if (ss >> name >> lastModifiedBy >> capacity_str >> isAvailable_str >> bookedBy) {
+                try {
+                    int capacity = std::stoi(capacity_str);
+                    bool isAvailable = (isAvailable_str == "Yes");
+                    Room room(name, lastModifiedBy, capacity, isAvailable);
+                    if (bookedBy != "none") {
+                        room.setBookedBy(bookedBy);
+                    }
+                    rooms.push_back(room);
+                } catch (const std::invalid_argument& e) {
+                    std::cerr << "Skipping malformed line in rooms.txt: " << line << std::endl;
+                }
             }
-            rooms.push_back(room);
         }
         file.close();
     }
@@ -77,7 +86,7 @@ Room* RoomManager::findRoom(const std::string& roomName) {
 void RoomManager::uploadRoom(const std::string& adminName) {
     std::string roomName;
     int capacity;
-    bool isAvailable;
+    bool isAvailable = true; // Initialize to true
 
     std::cout << "\n--- Upload New Room ---" << std::endl;
     std::cout << "Enter a unique name for the new room: ";
@@ -94,21 +103,25 @@ void RoomManager::uploadRoom(const std::string& adminName) {
 
     std::cout << "Enter the capacity of the room: ";
     std::cin >> capacity;
+    int availableInput;
     std::cout << "Is the room available for booking? (1 for Yes, 0 for No): ";
-    std::cin >> isAvailable;
+    std::cin >> availableInput;
+    isAvailable = (availableInput == 1);
 
     rooms.emplace_back(roomName, adminName, capacity, isAvailable);
+    historyManager->logCreate(roomName, adminName, capacity, isAvailable);
     saveRooms();
     UI::displayMessage("Room '" + roomName + "' has been uploaded successfully.");
 }
 
-void RoomManager::deleteRoom(const std::string& roomName) {
+void RoomManager::deleteRoom(const std::string& roomName, const std::string& adminName) {
     auto it = std::remove_if(rooms.begin(), rooms.end(), [&](const Room& r) {
         return r.getName() == roomName;
     });
 
     if (it != rooms.end()) {
         rooms.erase(it, rooms.end());
+        historyManager->logDelete(roomName, adminName);
         saveRooms();
         UI::displayMessage("Room '" + roomName + "' has been deleted successfully.");
     } else {
@@ -138,6 +151,7 @@ void RoomManager::modifyRoom(const std::string& adminName) {
         it->setAvailable(isAvailable);
         it->setLastModifiedBy(adminName);
         it->setTimestamp(time(0));
+        historyManager->logModify(roomName, adminName, capacity, isAvailable);
 
         saveRooms();
         UI::displayMessage("Room '" + roomName + "' has been modified successfully.");
@@ -158,6 +172,7 @@ void RoomManager::addRoom(const std::string& adminName, const std::string& roomN
     }
 
     rooms.emplace_back(roomName, adminName, capacity, isAvailable);
+    historyManager->logCreate(roomName, adminName, capacity, isAvailable);
     saveRooms();
 }
 
@@ -171,6 +186,7 @@ void RoomManager::modifyRoom(const std::string& adminName, const std::string& ro
         it->setAvailable(isAvailable);
         it->setLastModifiedBy(adminName);
         it->setTimestamp(time(0));
+        historyManager->logModify(roomName, adminName, capacity, isAvailable);
 
         saveRooms();
         UI::displayMessage("Room '" + roomName + "' has been modified successfully.");

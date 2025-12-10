@@ -5,6 +5,8 @@
 #include <vector>
 #include <ctime>
 
+class RoomHistoryManager;
+
 class Room {
 public:
     Room(const std::string& name, const std::string& lastModifiedBy, int capacity, bool isAvailable);
@@ -43,11 +45,12 @@ public:
     void saveRooms();
     Room* findRoom(const std::string& roomName);
     void addRoom(const std::string& adminName, const std::string& roomName, int capacity, bool isAvailable = true);
-    void deleteRoom(const std::string& roomName);
+    void deleteRoom(const std::string& roomName, const std::string& adminName);
 
 private:
     std::vector<Room> rooms;
     const std::string ROOMS_FILE = "rooms.txt";
+    RoomHistoryManager* historyManager;
 };
 
 #endif // ROOM_HPP
